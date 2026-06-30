@@ -76,7 +76,7 @@ namespace timing {
   constexpr int      GHOST_CLEAN_EVERY = 20;     // full white flush every N redraws
 }
 
-// Screen layout. Panel is 800 x 480. Two columns: text left, sky dial right.
+// Screen layout. Panel is 800 x 480. Two columns: aircraft left, climate right.
 namespace ui {
   constexpr int SCREEN_W = 800, SCREEN_H = 480;
   constexpr int MARGIN   = 24;
@@ -103,7 +103,7 @@ namespace ui {
 
 }
 
-// All settings — loaded from and saved to config.txt on the SD card.
+// All settings — loaded from config.txt on the SD card.
 struct Settings {
   SpeedUnit  speed   = SPD_KPH;
   DistUnit   dist    = DIST_KM;
@@ -137,8 +137,8 @@ struct Plane {
   bool   found = false;
   String callsign, hex, typeDesc, reg, airline;
   String fromCity, fromCode, toCity, toCode;
-  double altFt = 0, bearing = 0;                          // bearing = direction from you to it
-  double slantKm = 0, groundKm = 0;   // true 3D straight-line distance and its horizontal part
+  double altFt = 0;
+  double slantKm = 0;                 // true 3D straight-line distance
   double gsKt = 0, vrateFpm = 0;      // ground speed (knots), vertical rate (ft/min)
 };
 
@@ -150,7 +150,6 @@ struct Plane {
 
 // ============================ MATH HELPERS ==========================
 static double toRad(double d) { return d * M_PI / 180.0; }
-static double toDeg(double r) { return r * 180.0 / M_PI; }
 
 static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
   const double R = 6371.0;
@@ -158,13 +157,6 @@ static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
   double h = sin(dLat / 2) * sin(dLat / 2) +
              cos(toRad(lat1)) * cos(toRad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
   return R * 2 * atan2(sqrt(h), sqrt(1 - h));
-}
-
-static double bearingDeg(double lat1, double lon1, double lat2, double lon2) {
-  double y = sin(toRad(lon2 - lon1)) * cos(toRad(lat2));
-  double x = cos(toRad(lat1)) * sin(toRad(lat2)) -
-             sin(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(lon2 - lon1));
-  return fmod(toDeg(atan2(y, x)) + 360.0, 360.0);
 }
 
 static double altFeet(JsonVariant v) {
@@ -258,9 +250,8 @@ static Climate readClimate() {
 }
 
 // ============================ CONFIG ================================
-// Reads /config.txt from the SD card. Format: one KEY=VALUE per line,
-// '#' lines and blank lines are ignored. Valid keys:
-//   SSID, PASS, LAT, LON, ALT, TZ
+// Reads /config.txt from the SD card. Format: one KEY=VALUE per line.
+// '#' lines and blank lines are ignored.
 static void loadConfig() {
   pinMode(pin::SD_EN, OUTPUT);
   digitalWrite(pin::SD_EN, HIGH);
@@ -395,9 +386,7 @@ static bool fetchOverhead(Plane& best) {
     best.altFt     = altFt;
     best.typeDesc  = a["desc"].isNull() ? a["t"].as<String>() : a["desc"].as<String>();
     best.reg       = a["r"].isNull() ? "" : a["r"].as<String>();
-    best.bearing   = bearingDeg(myLat, myLon, lat, lon);
     best.slantKm   = slantKm;
-    best.groundKm  = groundKm;
     best.gsKt      = a["gs"].isNull() ? 0 : a["gs"].as<double>();
     best.vrateFpm  = a["baro_rate"].isNull() ? 0 : a["baro_rate"].as<double>();
   }
@@ -647,7 +636,7 @@ static void drawPlane(const Plane& p) {
   }
   y += 18;
 
-  // type, distance, altitude, speed, where-to-look — all in the flight column
+  // type, distance, altitude, and speed — all in the flight column
   epaper.setFreeFont(&FreeSans18pt7b);
   epaper.drawString(fit(p.typeDesc, ui::LEFT_W), ui::LEFT_X, y); y += 40;
   epaper.drawString(fit(distStr(p.slantKm) + " · " + altStr(p.altFt), ui::LEFT_W), ui::LEFT_X, y); y += 40;
