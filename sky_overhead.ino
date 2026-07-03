@@ -1,7 +1,7 @@
 /*
  * Sky Overhead — reTerminal E1001 (ESP32-S3)  ·  wall-appliance build
  * ============================================================================
- * Shows the nearest aircraft (airline, route, type, distance, altitude, speed)
+ * Shows the nearest aircraft (airline, route, type, altitude, speed)
  * on the left, with an onboard room temperature/humidity panel on the right.
  * Designed to behave like an appliance: no per-minute flashing, a graceful empty sky,
  * it survives network glitches and stays quiet at night. Config is edited directly
@@ -34,6 +34,8 @@
 #include <SD.h>
 #include <SPI.h>
 
+#include "IconFont.h"
+
 // Runtime config — loaded from /config.txt on the SD card at boot.
 // If the card is missing or the file can't be parsed the device boots but
 // won't connect to Wi-Fi; it will retry on the next timer wake.
@@ -41,9 +43,8 @@ String wifiSSID, wifiPass, tzInfo;
 double myLat = 0.0, myLon = 0.0, myAltM = 0.0;
 
 // Unit preferences — also loaded from config.txt.
-// Defaults: aviation height (ft/FL), metric distance, km/h, Celsius.
+// Defaults: aviation height (ft/FL), km/h, Celsius.
 enum SpeedUnit  { SPD_KPH = 0, SPD_MPH = 1, SPD_KTS = 2 };
-enum DistUnit   { DIST_KM  = 0, DIST_MI  = 1 };
 enum HeightUnit { HGT_FTFL = 0, HGT_METRIC = 1 };
 enum TempUnit   { TEMP_C   = 0, TEMP_F   = 1 };
 
@@ -80,22 +81,43 @@ namespace timing {
 namespace ui {
   constexpr int SCREEN_W = 800, SCREEN_H = 480;
   constexpr int MARGIN   = 24;
-  constexpr int CONTENT_W = SCREEN_W - 2 * MARGIN;
 
   constexpr int HDR_TEXT_Y = 14;
   constexpr int BATT_X = 740, BATT_Y = 12, BATT_W = 40, BATT_H = 18;
-  constexpr int RULE_Y = 40;
+  constexpr int CONTENT_TOP_Y = 40;
+  constexpr int DIVIDER_X = 466;
+  constexpr int LEFT_TEXT_W = DIVIDER_X - 48;
 
-  // left column = aircraft (rows flow from y=66 in drawPlane)
-  constexpr int LEFT_X = MARGIN;
-  constexpr int LEFT_W = 410;
+  // shared left-column vertical anchors
+  constexpr int LEFT_CX = DIVIDER_X / 2;
+  constexpr int LEFT_ICON_Y = 128;
+  constexpr int LEFT_TITLE_Y = 226;
+  constexpr int LEFT_SUBTITLE_Y = 282;
+  constexpr int LEFT_ROUTE_Y = 344;
+  constexpr int LEFT_DETAIL_GAP = 30;
+  constexpr int LEFT_DETAIL_1_Y = 380;
+  constexpr int LEFT_DETAIL_2_Y = LEFT_DETAIL_1_Y + LEFT_DETAIL_GAP;
+  constexpr int LEFT_DETAIL_3_Y = LEFT_DETAIL_2_Y + LEFT_DETAIL_GAP;
+
+  // shared route-row geometry
+  constexpr int ROUTE_ARROW_LEN = 48;
+  constexpr int ROUTE_GAP = 14;
+  constexpr int ROUTE_TEXT_HALF_H = 18;
+
+  // full-screen sleep view: intentional exception to the two-column content grid
+  constexpr int SLEEP_CX = SCREEN_W / 2;
+  constexpr int SLEEP_TEXT_W = SCREEN_W - 2 * MARGIN;
+  constexpr int SLEEP_WAKE_Y = 326;
+
+  // shared frame geometry
+  constexpr int HDR_ICON_X = MARGIN - 2;
+  constexpr int HDR_ICON_Y = HDR_TEXT_Y - 8;
+  constexpr int HDR_TEXT_X = MARGIN + 26;
 
   // right panel = indoor climate (thermometer + droplet)
-  constexpr int DIVIDER_X = 466;
-  constexpr int PANEL_CX  = 632;     // panel centre, for the INDOOR header
+  constexpr int PANEL_CX  = 632;     // panel centre
   constexpr int ICON_X    = 548;     // icon centre
   constexpr int NUM_X     = 588;     // big number left edge
-  constexpr int HEADER_Y  = 84;
   constexpr int TEMP_Y    = 205;     // vertical centre of the temperature row
   constexpr int HUM_Y     = 325;     // vertical centre of the humidity row
 
@@ -106,23 +128,28 @@ namespace ui {
 // All settings — loaded from config.txt on the SD card.
 struct Settings {
   SpeedUnit  speed   = SPD_KPH;
-  DistUnit   dist    = DIST_KM;
   HeightUnit height  = HGT_FTFL;
   TempUnit   temp    = TEMP_C;
   uint16_t   radius  = 30;  // km, any value
-  uint8_t    night   = 1;   // 0 = off, 1 = 22:00-07:00, 2 = 23:00-06:00
+  bool       night   = false;
+  uint16_t   nightStart = 0;  // minutes after midnight
+  uint16_t   nightEnd   = 0;
   uint16_t   busy    = 60;  // seconds, any value
+  bool       demo    = false;
 };
 
 // State that survives deep sleep but not a power cycle.
-RTC_DATA_ATTR char     rtcSig[128]     = "";   // signature of what's on screen
+RTC_DATA_ATTR char     rtcSig[320]     = "";   // signature of what's on screen
 RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
+RTC_DATA_ATTR char     rtcLastCities[96] = ""; // origin/destination city text
 RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
+RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
 RTC_DATA_ATTR time_t   rtcLastEpoch    = 0;    // when it was last overhead
 RTC_DATA_ATTR uint16_t rtcRedraws      = 0;    // for periodic ghost-clean
+RTC_DATA_ATTR uint8_t  rtcDemoStep     = 0;    // rotates demo screens
 
 EPaper            epaper;
 Settings          cfg;
@@ -148,6 +175,8 @@ struct Plane {
   #define LOG(...) ((void)0)
 #endif
 
+static void goSleep(uint32_t seconds);
+
 // ============================ MATH HELPERS ==========================
 static double toRad(double d) { return d * M_PI / 180.0; }
 
@@ -164,10 +193,25 @@ static double altFeet(JsonVariant v) {
   return v.as<double>();
 }
 
+static String jsonText(JsonVariant v) {
+  if (v.isNull()) return "";
+  String s = v.as<String>();
+  s.trim();
+  return (s == "null") ? "" : s;
+}
+
 // ============================ TIME HELPERS ==========================
 static bool haveClock() {
   struct tm t;
   return getLocalTime(&t, 800);
+}
+
+static bool syncClock() {
+  configTzTime(tzInfo.c_str(), "pool.ntp.org", "time.nist.gov");
+  struct tm t;
+  bool ok = getLocalTime(&t, 5000);
+  LOG("[time] sync %s\n", ok ? "ok" : "timeout");
+  return ok;
 }
 
 static String hhmm() {
@@ -187,26 +231,68 @@ static String epochHHMM(time_t when) {
   return String(b);
 }
 
-static int curHour() {
+static int curMinuteOfDay() {
   struct tm t;
   if (!getLocalTime(&t, 800)) return -1;
-  return t.tm_hour;
+  return t.tm_hour * 60 + t.tm_min;
 }
 
-static uint32_t secsUntilHour(int h) {
+static uint32_t secsUntilMinuteOfDay(uint16_t minuteOfDay) {
   struct tm t;
   if (!getLocalTime(&t, 800)) return timing::RETRY_SECONDS;
   int now  = t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec;
-  int diff = h * 3600 - now;
+  int diff = (int)minuteOfDay * 60 - now;
   if (diff <= 0) diff += 86400;
   return diff;
 }
 
 static bool isNightNow() {
   if (!cfg.night) return false;
-  int h = curHour();
-  if (h < 0) return false;                       // no clock -> never "night"
-  return cfg.night == 1 ? (h >= 22 || h < 7) : (h >= 23 || h < 6);
+  int now = curMinuteOfDay();
+  if (now < 0) return false;                       // no clock -> never "night"
+  if (cfg.nightStart == cfg.nightEnd) return true;
+  if (cfg.nightStart < cfg.nightEnd)
+    return now >= cfg.nightStart && now < cfg.nightEnd;
+  return now >= cfg.nightStart || now < cfg.nightEnd;
+}
+
+static bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
+  int colon = value.indexOf(':');
+  if (colon < 0) return false;
+  if (value.indexOf(':', colon + 1) >= 0) return false;
+  if (colon == 0 || colon > 2) return false;
+  int minuteDigits = value.length() - colon - 1;
+  if (minuteDigits != 2) return false;
+  for (int i = 0; i < value.length(); i++) {
+    if (i == colon) continue;
+    if (!isDigit(value[i])) return false;
+  }
+  int h = value.substring(0, colon).toInt();
+  int m = value.substring(colon + 1).toInt();
+  if (h < 0 || h > 23 || m < 0 || m > 59) return false;
+  minuteOfDay = (uint16_t)(h * 60 + m);
+  return true;
+}
+
+static bool parseNightMode(const String& value) {
+  String range = value;
+  range.trim();
+  if (!range.length()) return false;
+
+  int dash = range.indexOf('-');
+  if (dash < 0 || range.indexOf('-', dash + 1) >= 0) return false;
+
+  String startText = range.substring(0, dash);
+  String endText = range.substring(dash + 1);
+  startText.trim();
+  endText.trim();
+
+  uint16_t start = 0, end = 0;
+  if (!parseHHMM(startText, start) || !parseHHMM(endText, end)) return false;
+
+  cfg.nightStart = start;
+  cfg.nightEnd = end;
+  return true;
 }
 
 // ============================ BATTERY ===============================
@@ -290,12 +376,12 @@ static void loadConfig() {
       else if (val == "kts") cfg.speed = SPD_KTS;
       else                   cfg.speed = SPD_KPH;
     }
-    else if (key == "DIST")   cfg.dist   = (val == "mi")     ? DIST_MI    : DIST_KM;
     else if (key == "HEIGHT") cfg.height = (val == "metric") ? HGT_METRIC : HGT_FTFL;
     else if (key == "TEMP")   cfg.temp   = (val == "f")      ? TEMP_F     : TEMP_C;
     else if (key == "RADIUS") cfg.radius = (uint16_t)constrain(val.toInt(), 1, 500);
-    else if (key == "NIGHT")  cfg.night  = constrain(val.toInt(), 0, 2);
+    else if (key == "NIGHT_MODE") cfg.night = parseNightMode(val);
     else if (key == "BUSY")   cfg.busy   = (uint16_t)constrain(val.toInt(), 15, 600);
+    else if (key == "DEMO")   cfg.demo   = (val == "1" || val == "true" || val == "on");
   }
   f.close();
   SD.end();
@@ -380,12 +466,12 @@ static bool fetchOverhead(Plane& best) {
 
     bestSlant      = slantKm;
     best.found     = true;
-    best.hex       = a["hex"].as<String>();
-    best.callsign  = a["flight"].as<String>();
-    best.callsign.trim();
+    best.hex       = jsonText(a["hex"]);
+    best.callsign  = jsonText(a["flight"]);
     best.altFt     = altFt;
-    best.typeDesc  = a["desc"].isNull() ? a["t"].as<String>() : a["desc"].as<String>();
-    best.reg       = a["r"].isNull() ? "" : a["r"].as<String>();
+    best.typeDesc  = jsonText(a["desc"]);
+    if (!best.typeDesc.length()) best.typeDesc = jsonText(a["t"]);
+    best.reg       = jsonText(a["r"]);
     best.slantKm   = slantKm;
     best.gsKt      = a["gs"].isNull() ? 0 : a["gs"].as<double>();
     best.vrateFpm  = a["baro_rate"].isNull() ? 0 : a["baro_rate"].as<double>();
@@ -405,16 +491,16 @@ static void fetchRoute(Plane& p) {
   JsonObject fr = doc["response"]["flightroute"];
   if (fr.isNull()) return;                        // unknown route (GA / military)
 
-  p.airline = fr["airline"]["name"].as<String>();
+  p.airline = jsonText(fr["airline"]["name"]);
   auto city = [](JsonObject ap) -> String {
     if (ap.isNull()) return "";
-    return ap["municipality"].isNull() ? ap["name"].as<String>()
-                                       : ap["municipality"].as<String>();
+    String s = jsonText(ap["municipality"]);
+    return s.length() ? s : jsonText(ap["name"]);
   };
   auto code = [](JsonObject ap) -> String {
     if (ap.isNull()) return "";
-    return ap["iata_code"].isNull() ? ap["icao_code"].as<String>()
-                                    : ap["iata_code"].as<String>();
+    String s = jsonText(ap["iata_code"]);
+    return s.length() ? s : jsonText(ap["icao_code"]);
   };
   p.fromCity = city(fr["origin"]);      p.fromCode = code(fr["origin"]);
   p.toCity   = city(fr["destination"]); p.toCode   = code(fr["destination"]);
@@ -429,80 +515,40 @@ static String fit(const String& s, int maxW) {
   return t + "…";
 }
 
+static void drawIcon(char glyph, int x, int y, uint8_t nativeSize) {
+  epaper.setFreeFont(&SkyIcon24);
+  uint8_t baseline = nativeSize > 127 ? 127 : nativeSize;
+  epaper.drawChar(x, y + baseline, glyph, TFT_BLACK, TFT_WHITE, 1);
+}
+
+static void drawIconCentered(char glyph, int cx, int cy, uint8_t nativeSize) {
+  drawIcon(glyph, cx - nativeSize / 2, cy - nativeSize / 2, nativeSize);
+}
+
 static void batteryGlyph(int x, int y, int pct) {
   if (pct < 0) return;
-  epaper.drawRect(x, y, ui::BATT_W, ui::BATT_H, TFT_BLACK);
-  epaper.fillRect(x + ui::BATT_W, y + 5, 3, 8, TFT_BLACK);   // nub
-  int fillW = (int)lround((ui::BATT_W - 4) * pct / 100.0);
-  epaper.fillRect(x + 2, y + 2, fillW, ui::BATT_H - 4, TFT_BLACK);
+  char glyph = icon::BATTERY_EMPTY;
+  if (pct >= 85) glyph = icon::BATTERY_FULL;
+  else if (pct >= 45) glyph = icon::BATTERY_MEDIUM;
+  else if (pct >= 15) glyph = icon::BATTERY_LOW;
+  drawIcon(glyph, x, y - 6, icon::BATTERY_EMPTY_SIZE);
 }
 
-// A small top-view plane, pointing toward headingDeg (0 = north = up).
-static void drawPlaneIcon(int cx, int cy, double scale, double headingDeg) {
-  double th = toRad(headingDeg), s = sin(th), c = cos(th);
-  auto X = [&](double lx, double ly) { return cx + (int)lround(scale * (lx * c - ly * s)); };
-  auto Y = [&](double lx, double ly) { return cy + (int)lround(scale * (lx * s + ly * c)); };
-  epaper.fillTriangle(X(0,-1.0), Y(0,-1.0), X(-0.13,0.85), Y(-0.13,0.85),
-                      X(0.13,0.85), Y(0.13,0.85), TFT_BLACK);                 // fuselage
-  epaper.fillTriangle(X(-0.95,0.25), Y(-0.95,0.25), X(0.95,0.25), Y(0.95,0.25),
-                      X(0,0.5), Y(0,0.5), TFT_BLACK);                         // main wings
-  epaper.fillTriangle(X(-0.4,0.95), Y(-0.4,0.95), X(0.4,0.95), Y(0.4,0.95),
-                      X(0,0.6), Y(0,0.6), TFT_BLACK);                         // tailplane
+static void drawRouteArrow(int x, int y, int len) {
+  drawIconCentered(icon::ARROW_RIGHT, x + len / 2, y, icon::ARROW_RIGHT_SIZE);
 }
 
-// A friendly sun: filled disc with tapered triangular rays and a small gap.
-static void drawSun(int cx, int cy, int r) {
-  epaper.fillCircle(cx, cy, r, TFT_BLACK);
-  const double gap = 5, rayLen = 13, halfW = 3.2;
-  for (int a = 0; a < 360; a += 45) {
-    double th = toRad(a), dx = cos(th), dy = sin(th), px = -sin(th), py = cos(th);
-    double rb = r + gap, rt = r + gap + rayLen;
-    int b1x = cx + (int)lround(rb * dx + halfW * px), b1y = cy + (int)lround(rb * dy + halfW * py);
-    int b2x = cx + (int)lround(rb * dx - halfW * px), b2y = cy + (int)lround(rb * dy - halfW * py);
-    int tx  = cx + (int)lround(rt * dx),              ty  = cy + (int)lround(rt * dy);
-    epaper.fillTriangle(b1x, b1y, b2x, b2y, tx, ty, TFT_BLACK);
-  }
-}
-
-// Thermometer: outlined stem (rounded top) + bulb, mercury filling bulb and the
-// lower stem, with a few tick marks. Centred at (cx, cy), total height h.
-static void drawThermometer(int cx, int cy, int h) {
-  const int sw = 5;            // stem half-width
-  const int bulbR = 12;
-  int topY  = cy - h / 2;
-  int bulbY = cy + h / 2;
-
-  epaper.drawRoundRect(cx - sw, topY, 2 * sw, bulbY - topY, sw, TFT_BLACK);  // stem
-  epaper.fillCircle(cx, bulbY, bulbR - 1, TFT_WHITE);     // clear stem bottom out of the bulb
-  epaper.drawCircle(cx, bulbY, bulbR, TFT_BLACK);         // bulb outline
-
-  epaper.fillCircle(cx, bulbY, bulbR - 3, TFT_BLACK);     // mercury: bulb
-  int mercTop = topY + (int)((bulbY - topY) * 0.42);
-  epaper.fillRect(cx - (sw - 1), mercTop, 2 * (sw - 1), bulbY - mercTop, TFT_BLACK); // column
-
-  for (int i = 1; i <= 3; i++) {                          // tick marks
-    int ty = topY + i * (bulbY - topY) / 5;
-    epaper.drawFastHLine(cx + sw + 2, ty, 4, TFT_BLACK);
-  }
-}
-
-// Water droplet: round bottom + tangent point on top, with a small highlight.
-static void drawDroplet(int cx, int cy, int s) {
-  int ccy = cy + (int)lround(s * 0.35);                   // circle centre
-  epaper.fillCircle(cx, ccy, s, TFT_BLACK);
-  int bx = (int)lround(s * 0.71);
-  int by = ccy - bx;
-  epaper.fillTriangle(cx - bx, by, cx + bx, by, cx, ccy - 2 * s, TFT_BLACK);
-  epaper.fillCircle(cx - s / 3, ccy - s / 4, max(2, s / 6), TFT_WHITE);   // sheen
-}
-
-// A solid right-pointing arrow: a thick shaft with a filled triangular head.
-static void drawArrow(int x, int y, int len) {
-  const int head = 16;     // head length
-  const int hh   = 9;      // head half-height
-  const int th   = 4;      // shaft thickness
-  epaper.fillRect(x, y - th / 2, len - head + 1, th, TFT_BLACK);
-  epaper.fillTriangle(x + len - head, y - hh, x + len - head, y + hh, x + len, y, TFT_BLACK);
+static void drawRouteCodes(const String& fromCode, const String& toCode, int cx, int cy) {
+  epaper.setFreeFont(&FreeSansBold24pt7b);
+  epaper.setTextDatum(TL_DATUM);
+  int fromW = epaper.textWidth(fromCode);
+  int totalW = fromW + ui::ROUTE_GAP + ui::ROUTE_ARROW_LEN + ui::ROUTE_GAP + epaper.textWidth(toCode);
+  int x = cx - totalW / 2;
+  int y = cy - ui::ROUTE_TEXT_HALF_H;
+  epaper.drawString(fromCode, x, y);
+  drawRouteArrow(x + fromW + ui::ROUTE_GAP, cy, ui::ROUTE_ARROW_LEN);
+  epaper.setFreeFont(&FreeSansBold24pt7b);
+  epaper.drawString(toCode, x + fromW + ui::ROUTE_GAP + ui::ROUTE_ARROW_LEN + ui::ROUTE_GAP, y);
 }
 
 static String altStr(double ft) {
@@ -513,13 +559,6 @@ static String altStr(double ft) {
     snprintf(b, sizeof(b), "FL%.0f", ft / 100.0);
   else
     snprintf(b, sizeof(b), "%.0f ft", ft);
-  return String(b);
-}
-
-static String distStr(double km) {
-  char b[24];
-  if (cfg.dist == DIST_MI) snprintf(b, sizeof(b), "%.1f mi away", km / 1.609);
-  else                     snprintf(b, sizeof(b), "%.1f km away", km);
   return String(b);
 }
 
@@ -534,27 +573,81 @@ static String speedStr(double kt) {
 static const char* trendWord(double fpm) {
   if (fpm >  150) return "climbing";
   if (fpm < -150) return "descending";
-  return "level";
+  return "level flight";
 }
 
-// The right-hand indoor-climate panel: a divider, a header, then a thermometer
-// with the temperature and a droplet with the humidity. Big and icon-led.
-static void drawClimatePanel(const Climate& c) {
-  epaper.drawFastVLine(ui::DIVIDER_X, ui::RULE_Y + 16, 360, TFT_BLACK);
+static String aircraftMeta(const Plane& p) {
+  String s = p.typeDesc.length() ? p.typeDesc : "Type unknown";
+  if (p.reg.length()) {
+    s += " · ";
+    s += p.reg;
+  }
+  return s;
+}
 
+static String routeCities(const Plane& p) {
+  String cities;
+  if (p.fromCity.length()) cities = p.fromCity;
+  if (p.toCity.length()) {
+    if (cities.length()) cities += " to ";
+    cities += p.toCity;
+  }
+  return cities;
+}
+
+static String motionText(const Plane& p) {
+  return altStr(p.altFt) + " (" + trendWord(p.vrateFpm) + ") · " + speedStr(p.gsKt);
+}
+
+static Plane demoPlane() {
+  Plane p;
+  p.found = true;
+  p.callsign = "DLH4JA";
+  p.hex = "3C65C2";
+  p.airline = "Lufthansa";
+  p.fromCode = "MUC";
+  p.toCode = "BUD";
+  p.fromCity = "Munich";
+  p.toCity = "Budapest";
+  p.typeDesc = "Airbus A320neo";
+  p.reg = "D-AINZ";
+  p.altFt = 33000;
+  p.slantKm = 8.2;
+  p.gsKt = 421;
+  p.vrateFpm = 850;
+  return p;
+}
+
+static void rememberLastSeen(const Plane& p) {
+  String s = p.airline.length() ? p.airline : p.callsign;
+  s.toCharArray(rtcLastSeen, sizeof(rtcLastSeen));
+  p.fromCode.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
+  p.toCode.toCharArray(rtcLastTo, sizeof(rtcLastTo));
+  routeCities(p).toCharArray(rtcLastCities, sizeof(rtcLastCities));
+  p.typeDesc.toCharArray(rtcLastType, sizeof(rtcLastType));
+  p.reg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
+  motionText(p).toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
+  if (haveClock()) rtcLastEpoch = time(nullptr);
+}
+
+// The right-hand indoor-climate panel: a thermometer with the temperature and
+// a droplet with the humidity. Big and icon-led.
+static void drawClimatePanel(const Climate& c) {
   epaper.setTextDatum(MC_DATUM);
-  epaper.setFreeFont(&FreeSansBold12pt7b);
-  epaper.drawString("ROOM", ui::PANEL_CX, ui::HEADER_Y);
 
   if (!c.ok) {                                  // sensor not ready
-    epaper.setFreeFont(&FreeSans12pt7b);
-    epaper.drawString("sensor warming up", ui::PANEL_CX, ui::TEMP_Y);
+    drawIconCentered(icon::THERMOMETER, ui::ICON_X, ui::TEMP_Y, icon::THERMOMETER_SIZE);
+    drawIconCentered(icon::DROPLET, ui::ICON_X, ui::HUM_Y, icon::DROPLET_SIZE);
+    epaper.setTextDatum(ML_DATUM);
+    epaper.setFreeFont(&FreeSansBold24pt7b);
+    epaper.drawString("--", ui::NUM_X, ui::TEMP_Y);
+    epaper.drawString("--", ui::NUM_X, ui::HUM_Y);
     epaper.setTextDatum(TL_DATUM);
     return;
   }
 
   // ---- temperature ----
-  drawThermometer(ui::ICON_X, ui::TEMP_Y, 52);
+  drawIconCentered(icon::THERMOMETER, ui::ICON_X, ui::TEMP_Y, icon::THERMOMETER_SIZE);
   epaper.setTextDatum(ML_DATUM);
   epaper.setFreeFont(&FreeSansBold24pt7b);
   char tnum[8];
@@ -569,7 +662,7 @@ static void drawClimatePanel(const Climate& c) {
   epaper.drawString(unit, dx + 12, ui::TEMP_Y);
 
   // ---- humidity ----
-  drawDroplet(ui::ICON_X, ui::HUM_Y, 16);
+  drawIconCentered(icon::DROPLET, ui::ICON_X, ui::HUM_Y, icon::DROPLET_SIZE);
   epaper.setFreeFont(&FreeSansBold24pt7b);
   char hnum[8];
   snprintf(hnum, sizeof(hnum), "%.0f%%", c.hum);
@@ -579,80 +672,82 @@ static void drawClimatePanel(const Climate& c) {
 }
 
 // ============================ LIVE SCREEN ===========================
-static void drawHeader(const Plane& p, int batt) {
-  drawPlaneIcon(ui::MARGIN + 7, ui::HDR_TEXT_Y + 6, 9.0, 45);
+static void drawFrameHeader(int batt) {
+  drawIcon(icon::PLANE, ui::HDR_ICON_X, ui::HDR_ICON_Y, icon::PLANE_SIZE);
   epaper.setFreeFont(&FreeSansBold9pt7b);
-  epaper.drawString(p.found ? "OVERHEAD NOW" : "SKY OVERHEAD", ui::MARGIN + 26, ui::HDR_TEXT_Y);
+  epaper.drawString("SKY OVERHEAD", ui::HDR_TEXT_X, ui::HDR_TEXT_Y);
   batteryGlyph(ui::BATT_X, ui::BATT_Y, batt);
-  if (batt >= 0 && batt < 15) {
-    epaper.setFreeFont(&FreeSansBold9pt7b);
-    epaper.drawString("LOW", ui::BATT_X - 45, ui::HDR_TEXT_Y);
+}
+
+static void drawFrameFooter() {
+  epaper.setFreeFont(&FreeSans9pt7b);
+  epaper.setTextDatum(TR_DATUM);
+  epaper.drawString("updated " + hhmm(), ui::SCREEN_W - ui::MARGIN, ui::FOOTER_Y);
+  epaper.setTextDatum(TL_DATUM);
+}
+
+static void drawStateHero(char glyph, uint8_t glyphSize, int cx, const String& title,
+                          const String& subtitle, int textW = ui::LEFT_TEXT_W) {
+  epaper.setTextDatum(MC_DATUM);
+  drawIconCentered(glyph, cx, ui::LEFT_ICON_Y, glyphSize);
+  epaper.setFreeFont(&FreeSansBold24pt7b);
+  epaper.drawString(fit(title, textW), cx, ui::LEFT_TITLE_Y);
+  if (subtitle.length()) {
+    epaper.setFreeFont(&FreeSans18pt7b);
+    epaper.drawString(fit(subtitle, textW), cx, ui::LEFT_SUBTITLE_Y);
   }
-  epaper.drawFastHLine(ui::MARGIN, ui::RULE_Y, ui::CONTENT_W, TFT_BLACK);
+}
+
+static int infoRowY(uint8_t row) {
+  if (row == 0) return ui::LEFT_ROUTE_Y;
+  return ui::LEFT_DETAIL_1_Y + (row - 1) * ui::LEFT_DETAIL_GAP;
+}
+
+static void drawInfoLine(int cx, uint8_t& row, const String& text) {
+  if (!text.length() || row >= 4) return;
+  epaper.setFreeFont(&FreeSans12pt7b);
+  epaper.setTextDatum(MC_DATUM);
+  epaper.drawString(fit(text, ui::LEFT_TEXT_W), cx, infoRowY(row));
+  row++;
 }
 
 static void drawPlane(const Plane& p) {
-  // ---- left column: a flowing layout, so missing fields close up (no gaps) ----
-  int y = 66;
-  bool airlineKnown = p.airline.length();
+  int cx = ui::LEFT_CX;
 
-  epaper.setTextDatum(TL_DATUM);
-  epaper.setFreeFont(&FreeSansBold24pt7b);
-  String hero = airlineKnown ? p.airline
-              : (p.callsign.length() ? p.callsign : p.hex);
-  epaper.drawString(fit(hero, ui::LEFT_W), ui::LEFT_X, y);
-  y += 50;
+  String hero = p.callsign.length() ? p.callsign : p.hex;
+  if (!hero.length()) hero = "Aircraft";
+  drawStateHero(icon::PLANE_LARGE, icon::PLANE_LARGE_SIZE, cx, hero, p.airline);
 
-  if (airlineKnown && p.callsign.length()) {         // callsign as a subtitle
-    epaper.setFreeFont(&FreeSans12pt7b);
-    epaper.drawString(p.callsign, ui::LEFT_X, y);
-    y += 30;
-  }
-  y += 16;
-
-  // route — show codes + cities if known, otherwise a single clean line
+  String meta = aircraftMeta(p);
+  String motion = motionText(p);
   bool routeKnown = p.fromCode.length() || p.toCode.length();
+
   if (routeKnown) {
     String fc = p.fromCode.length() ? p.fromCode : "???";
     String tc = p.toCode.length()   ? p.toCode   : "???";
-    epaper.setFreeFont(&FreeSansBold24pt7b);
-    epaper.drawString(fc, ui::LEFT_X, y);
-    int ax = ui::LEFT_X + epaper.textWidth(fc) + 20;
-    int ay = y + 18;                              // centre on the 24pt codes
-    drawArrow(ax, ay, 62);
-    int dX = ax + 62 + 22;
-    epaper.drawString(tc, dX, y);
-    y += 50;
-    if (p.fromCity.length() || p.toCity.length()) {
-      epaper.setFreeFont(&FreeSans12pt7b);
-      epaper.drawString(fit(p.fromCity, dX - ui::LEFT_X - 12), ui::LEFT_X, y);
-      epaper.drawString(fit(p.toCity, ui::LEFT_X + ui::LEFT_W - dX), dX, y);
-      y += 30;
-    }
-  } else {
-    epaper.setFreeFont(&FreeSans18pt7b);
-    epaper.drawString("Route unknown", ui::LEFT_X, y);
-    y += 36;
+    drawRouteCodes(fc, tc, cx, ui::LEFT_ROUTE_Y);
   }
-  y += 18;
 
-  // type, distance, altitude, and speed — all in the flight column
-  epaper.setFreeFont(&FreeSans18pt7b);
-  epaper.drawString(fit(p.typeDesc, ui::LEFT_W), ui::LEFT_X, y); y += 40;
-  epaper.drawString(fit(distStr(p.slantKm) + " · " + altStr(p.altFt), ui::LEFT_W), ui::LEFT_X, y); y += 40;
-  epaper.drawString(speedStr(p.gsKt) + " · " + trendWord(p.vrateFpm), ui::LEFT_X, y);
+  epaper.setTextDatum(MC_DATUM);
+  uint8_t row = routeKnown ? 1 : 0;
+  drawInfoLine(cx, row, routeKnown ? routeCities(p) : "");
+  drawInfoLine(cx, row, meta);
+  drawInfoLine(cx, row, motion);
+  epaper.setTextDatum(TL_DATUM);
 }
 
 static void drawEmpty() {
-  int cx = ui::DIVIDER_X / 2;                     // centre within the left area
-  drawSun(cx, 96, 26);
+  int cx = ui::LEFT_CX;
   epaper.setTextDatum(MC_DATUM);
-  epaper.setFreeFont(&FreeSansBold24pt7b);
-  epaper.drawString("Clear skies", cx, 184);
-  epaper.setFreeFont(&FreeSans18pt7b);
-  if (strlen(rtcLastSeen)) {
-    epaper.drawString("Last seen overhead", cx, 250);
 
+  if (!strlen(rtcLastSeen)) {
+    drawStateHero(icon::SUN, icon::SUN_SIZE, cx, "Clear skies", "Nothing overhead");
+    epaper.setTextDatum(TL_DATUM);
+    return;
+  }
+
+  drawStateHero(icon::SUN, icon::SUN_SIZE, cx, "Clear skies", String(rtcLastSeen));
+  {
     String meta;
     if (strlen(rtcLastType)) meta = String(rtcLastType);
     if (strlen(rtcLastReg)) {
@@ -662,47 +757,33 @@ static void drawEmpty() {
 
     bool hasRoute = strlen(rtcLastFrom) || strlen(rtcLastTo);
     if (hasRoute) {
-      epaper.drawString(fit(String(rtcLastSeen), ui::DIVIDER_X - 48), cx, 288);
-      if (meta.length()) {
-        epaper.setFreeFont(&FreeSans12pt7b);
-        epaper.drawString(fit(meta, ui::DIVIDER_X - 48), cx, 322);
-      }
-
-      // Route row: centred arrow between the two codes
-      epaper.setFreeFont(&FreeSansBold24pt7b);
-      epaper.setTextDatum(TL_DATUM);
       String fc = strlen(rtcLastFrom) ? String(rtcLastFrom) : "???";
       String tc = strlen(rtcLastTo)   ? String(rtcLastTo)   : "???";
-      const int arrowLen = 48, gap = 14;
-      int fcW = epaper.textWidth(fc);
-      int totalW = fcW + gap + arrowLen + gap + epaper.textWidth(tc);
-      int rx = cx - totalW / 2;
-      int ry = meta.length() ? 350 : 324;
-      epaper.drawString(fc, rx, ry);
-      drawArrow(rx + fcW + gap, ry + 18, arrowLen);  // +18 = vertical centre of 24pt
-      epaper.drawString(tc, rx + fcW + gap + arrowLen + gap, ry);
-
-      epaper.setFreeFont(&FreeSans12pt7b);
-      epaper.setTextDatum(MC_DATUM);
-      String at = epochHHMM(rtcLastEpoch);
-      if (at.length())
-        epaper.drawString("at " + at, cx, meta.length() ? 410 : 382);
-    } else {
-      epaper.drawString(fit(String(rtcLastSeen), ui::DIVIDER_X - 48), cx, 294);
-      if (meta.length()) {
-        epaper.setFreeFont(&FreeSans12pt7b);
-        epaper.drawString(fit(meta, ui::DIVIDER_X - 48), cx, 332);
-      }
-      String at = epochHHMM(rtcLastEpoch);
-      if (at.length()) {
-        epaper.setFreeFont(&FreeSans12pt7b);
-        epaper.drawString("at " + at, cx, meta.length() ? 372 : 342);
-      }
+      drawRouteCodes(fc, tc, cx, ui::LEFT_ROUTE_Y);
     }
-  } else {
-    epaper.drawString("Nothing overhead", cx, 250);
+    uint8_t row = hasRoute ? 1 : 0;
+    drawInfoLine(cx, row, hasRoute ? String(rtcLastCities) : "");
+    drawInfoLine(cx, row, meta);
+    drawInfoLine(cx, row, String(rtcLastMotion));
   }
   epaper.setTextDatum(TL_DATUM);
+}
+
+static void drawNightSleep(uint16_t wakeMinute, int batt) {
+  epaper.fillScreen(TFT_WHITE);
+  epaper.setTextColor(TFT_BLACK, TFT_WHITE);
+
+  epaper.setTextDatum(TL_DATUM);
+  drawFrameHeader(batt);
+
+  drawStateHero(icon::MOON_STAR, icon::MOON_STAR_SIZE, ui::SLEEP_CX, "Sleeping",
+                "Aircraft checks paused", ui::SLEEP_TEXT_W);
+  char wake[32];
+  snprintf(wake, sizeof(wake), "until %02u:%02u", wakeMinute / 60, wakeMinute % 60);
+  epaper.setFreeFont(&FreeSans12pt7b);
+  epaper.drawString(wake, ui::SLEEP_CX, ui::SLEEP_WAKE_Y);
+
+  drawFrameFooter();
 }
 
 static void drawLive(const Plane& p, int batt, const Climate& clim) {
@@ -710,23 +791,38 @@ static void drawLive(const Plane& p, int batt, const Climate& clim) {
   epaper.setTextDatum(TL_DATUM);
   epaper.setTextColor(TFT_BLACK, TFT_WHITE);
 
-  drawHeader(p, batt);
+  drawFrameHeader(batt);
   if (p.found) drawPlane(p); else drawEmpty();
 
   drawClimatePanel(clim);
 
-  epaper.setFreeFont(&FreeSans9pt7b);
-  String foot;
-  if (p.found) {
-    if (p.reg.length()) foot = p.reg + "  ·  ";
-    foot += "adsb.lol + adsbdb";
+  drawFrameFooter();
+}
+
+static void runDemoMode() {
+  int batt = batteryPct();
+  Climate clim = readClimate();
+  Plane p = demoPlane();
+  rememberLastSeen(p);
+
+  uint8_t step = rtcDemoStep % 3;
+  if (step == 0) {
+    drawLive(p, batt, clim);
+  } else if (step == 1) {
+    Plane empty;
+    drawLive(empty, batt, clim);
   } else {
-    foot = "adsb.lol + adsbdb";
+    drawNightSleep(cfg.nightEnd, batt);
   }
-  epaper.drawString(foot, ui::MARGIN, ui::FOOTER_Y);
-  epaper.setTextDatum(TR_DATUM);
-  epaper.drawString("updated " + hhmm(), ui::SCREEN_W - ui::MARGIN, ui::FOOTER_Y);
-  epaper.setTextDatum(TL_DATUM);
+
+  epaper.update();
+  rtcRedraws++;
+  rtcDemoStep = (step + 1) % 3;
+  snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
+  LOG("[demo] drew step %u\n", step);
+  uint32_t demoSleep = cfg.busy < 30 ? cfg.busy : 30;
+  if (demoSleep < 15) demoSleep = 15;
+  goSleep(demoSleep);
 }
 
 // ============================ SLEEP =================================
@@ -754,12 +850,27 @@ void setup() {
 
   LOG("\n[boot] redraws=%u\n", rtcRedraws);
 
-  bool netOk = connectWiFi();
-  if (netOk) configTzTime(tzInfo.c_str(), "pool.ntp.org", "time.nist.gov");
+  if (cfg.demo) runDemoMode();
 
-  // Quiet hours: skip the fetch and the refresh entirely; sleep until morning.
+  bool netOk = connectWiFi();
+  if (netOk) syncClock();
+
+  // Quiet hours: show a sleep screen, skip the fetch, then sleep until morning.
   if (isNightNow()) {
-    goSleep(secsUntilHour(cfg.night == 1 ? 7 : 6));
+    int batt = batteryPct();
+    int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
+    char sig[32];
+    snprintf(sig, sizeof(sig), "N|%u|%d", cfg.nightEnd, lowBucket);
+    if (strcmp(sig, rtcSig) != 0) {
+      drawNightSleep(cfg.nightEnd, batt);
+      epaper.update();
+      rtcRedraws++;
+      strncpy(rtcSig, sig, sizeof(rtcSig));
+      LOG("[draw] night screen (%s)\n", sig);
+    } else {
+      LOG("[draw] night unchanged, skipped\n");
+    }
+    goSleep(secsUntilMinuteOfDay(cfg.nightEnd));
   }
 
   // Network glitch: leave the last good screen up and retry soon.
@@ -772,28 +883,25 @@ void setup() {
   if (got) fetchRoute(p);
 
   if (got) {                                       // remember for the empty-sky screen
-    String s = p.airline.length() ? p.airline : p.callsign;
-    s.toCharArray(rtcLastSeen, sizeof(rtcLastSeen));
-    p.fromCode.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
-    p.toCode.toCharArray(rtcLastTo, sizeof(rtcLastTo));
-    p.typeDesc.toCharArray(rtcLastType, sizeof(rtcLastType));
-    p.reg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
-    if (haveClock()) rtcLastEpoch = time(nullptr);
+    rememberLastSeen(p);
   }
 
   int batt = batteryPct();
   Climate clim = readClimate();
 
-  // No-flash: build a signature of the visible content and only repaint on change
-  // (or when a settings edit forced it). Climate is excluded from the signature
-  // intentionally — temp/humidity updates piggyback on the next plane-triggered repaint.
-  char sig[224];
+  // No-flash: repaint on identity, static metadata, coarse position, or display-state
+  // changes. Fast-moving motion and climate can wait; each repaint uses fresh data.
+  char sig[320];
   int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
   if (got)
-    snprintf(sig, sizeof(sig), "F|%s|%ld|%ld|%d",
-             p.hex.c_str(), lround(p.altFt / 500.0), lround(p.slantKm / 5.0), lowBucket);
+    snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%ld|%ld|%d",
+             p.hex.c_str(), p.airline.c_str(), p.fromCode.c_str(), p.toCode.c_str(),
+             p.typeDesc.c_str(), p.reg.c_str(), lround(p.altFt / 500.0),
+             lround(p.slantKm / 5.0), lowBucket);
   else
-    snprintf(sig, sizeof(sig), "E|%d|%s|%s|%s|%s|%s", lowBucket, rtcLastSeen, rtcLastFrom, rtcLastTo, rtcLastType, rtcLastReg);
+    snprintf(sig, sizeof(sig), "E|%d|%s|%s|%s|%s|%s|%s|%s",
+             lowBucket, rtcLastSeen, rtcLastFrom, rtcLastTo, rtcLastCities,
+             rtcLastType, rtcLastReg, rtcLastMotion);
 
   if (strcmp(sig, rtcSig) != 0) {
     if (rtcRedraws > 0 && rtcRedraws % timing::GHOST_CLEAN_EVERY == 0) {

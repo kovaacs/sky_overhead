@@ -1,8 +1,8 @@
 # Sky Overhead
 
-Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, including airline/callsign, route, aircraft type, tail number, distance, altitude, and speed. The right side of the display shows the onboard room temperature and humidity sensor.
+Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, including airline/callsign, route, aircraft type, tail number, altitude, and speed. The right side of the display shows the onboard room temperature and humidity sensor.
 
-The sketch is designed to run like a wall appliance: it sleeps between updates, keeps the e-paper image stable when the visible aircraft data has not changed, handles temporary network failures by leaving the last good screen up, and avoids updates during quiet hours.
+The sketch is designed to run like a wall appliance: it sleeps between updates, keeps the e-paper image stable when the visible aircraft data has not changed, handles temporary network failures by leaving the last good screen up, and pauses aircraft checks during quiet hours.
 
 ## Hardware
 
@@ -26,6 +26,9 @@ The sketch uses keyless public APIs:
 
 - `sky_overhead.ino`: main sketch
 - `driver.h`: display board selection, currently `BOARD_SCREEN_COMBO 520`
+- `IconFont.h`: generated bitmap icon font used by the display UI
+- `tools/generate_icon_font.py`: regenerates `IconFont.h` from Lucide SVG sources
+- `assets/icons/lucide/`: cached Lucide source SVGs and license
 
 ## Runtime Lifecycle
 
@@ -50,7 +53,7 @@ connect Wi-Fi
   v
 NTP sync
   |
-  +-- quiet hours -> sleep until morning
+  +-- quiet hours -> show night screen, sleep until morning
   |
   v
 fetchOverhead()
@@ -76,13 +79,25 @@ The sketch stores a small amount of state in `RTC_DATA_ATTR`, which survives dee
 
 - The left column shows the active aircraft or a clear-sky / last-seen view.
 - The right column shows indoor temperature and humidity.
-- The footer shows data source text and the local update time.
-- Aircraft altitude is shown as the altitude only, such as `FL110`, without climb/descent text on that row.
-- Aircraft type and tail number are shown on the active view and preserved for the last-seen view.
+- During quiet hours, the display switches to a moon-icon sleep screen while aircraft checks are paused.
+- The footer shows the local update time.
+- Aircraft type and tail number are shown below the route on the active view and preserved for the last-seen view.
+- Aircraft altitude is shown with its vertical trend in parentheses, such as `FL110 (climbing)`.
 - A signature skip prevents unnecessary e-paper refreshes when visible aircraft state has not changed.
 - Every 20 redraws, the sketch runs a full white refresh before the normal draw to reduce accumulated ghosting.
 
+The display is intentionally not always live. The device wakes, fetches current data, decides whether the visible state has changed enough to justify an e-paper refresh, then goes back to deep sleep. This trades second-by-second accuracy for much lower energy use, less e-paper flashing, and less ghosting. When the screen does refresh, it is drawn from the latest data collected during that wake cycle.
+
 Rendering happens in the display library's RAM buffer first. The slow e-paper transfer only happens during `epaper.update()`.
+
+Reusable display glyphs are generated from Lucide SVGs. The generator downloads
+and caches missing source SVGs in `assets/icons/lucide/`. After adding or
+changing icons, install `rsvg-convert` and ImageMagick's `magick` command, then
+run:
+
+```bash
+python3 tools/generate_icon_font.py
+```
 
 ## Hardware Quirks
 
@@ -161,12 +176,12 @@ LON=19.0402
 ALT=100
 TZ=CET-1CEST,M3.5.0,M10.5.0/3
 SPEED=kph
-DIST=km
 HEIGHT=ftfl
 TEMP=c
 RADIUS=30
-NIGHT=1
+NIGHT_MODE=23:00-07:00
 BUSY=60
+DEMO=0
 ```
 
 Required fields:
@@ -180,14 +195,14 @@ Required fields:
 Display and behavior fields:
 
 - `SPEED`: `kph`, `mph`, or `kts`
-- `DIST`: `km` or `mi`
 - `HEIGHT`: `ftfl` or `metric`
 - `TEMP`: `c` or `f`
 - `RADIUS`: aircraft search radius in kilometers
-- `NIGHT`: `0` off, `1` for 22:00-07:00, `2` for 23:00-06:00
+- `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
+- `DEMO`: `1` to skip network fetches and cycle through dummy live, clear-skies, and night screens for layout iteration; `0` for normal operation
 
-The sketch has defaults for units, radius, quiet hours, and sleep interval, but Wi-Fi and observer location must be correct for the app to work usefully. If the SD card is missing or `config.txt` cannot be read, the device will boot, leave Wi-Fi disconnected, and retry after a short sleep.
+The sketch has defaults for units, radius, and sleep interval. Quiet hours are disabled unless `NIGHT_MODE` is configured. Wi-Fi and observer location must be correct for the app to work usefully. If the SD card is missing or `config.txt` cannot be read, the device will boot, leave Wi-Fi disconnected, and retry after a short sleep.
 
 Example timezone values:
 
