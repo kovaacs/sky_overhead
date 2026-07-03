@@ -81,7 +81,9 @@ The sketch stores a small amount of state in `RTC_DATA_ATTR`, which survives dee
 - The right column shows indoor temperature and humidity.
 - During quiet hours, the display switches to a moon-icon sleep screen while aircraft checks are paused.
 - The footer shows the local update time.
-- Aircraft type and tail number are shown below the route on the active view and preserved for the last-seen view.
+- Aircraft type code and tail number are the primary aircraft label, for example `A321 OH-LZH`.
+- Rotorcraft use a helicopter glyph when ADS-B reports rotorcraft category `A7`; there is no type-code fallback.
+- The clear-sky view shows `Last seen`, then the retained aircraft label, retained route, and motion details.
 - Aircraft altitude is shown with its vertical trend in parentheses, such as `FL110 (climbing)`.
 - A signature skip prevents unnecessary e-paper refreshes when visible aircraft state has not changed.
 - Every 20 redraws, the sketch runs a full white refresh before the normal draw to reduce accumulated ghosting.
@@ -164,7 +166,7 @@ The device reads its runtime settings from a plain text file at the root of the 
 /config.txt
 ```
 
-Use a FAT-formatted microSD card. Create `config.txt` in the card root, not inside a folder. The file must use one `KEY=VALUE` pair per line. Do not quote values, and do not add spaces around `=`.
+Use a FAT-formatted microSD card. Create `config.txt` in the card root, not inside a folder. The file must use one `KEY=VALUE` pair per line. Do not quote values, and do not add spaces around `=`. Setting names are case-insensitive; documented option values such as `kts`, `metric`, `f`, `true`, and `on` are also case-insensitive.
 
 Minimal working example:
 
