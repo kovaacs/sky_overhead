@@ -88,16 +88,11 @@ namespace ui {
   constexpr int DIVIDER_X = 466;
   constexpr int LEFT_TEXT_W = DIVIDER_X - 48;
 
-  // shared left-column vertical anchors
+  // full-screen sleep-view vertical anchors
   constexpr int LEFT_CX = DIVIDER_X / 2;
   constexpr int LEFT_ICON_Y = 128;
   constexpr int LEFT_TITLE_Y = 226;
   constexpr int LEFT_SUBTITLE_Y = 282;
-  constexpr int LEFT_ROUTE_Y = 344;
-  constexpr int LEFT_DETAIL_GAP = 30;
-  constexpr int LEFT_DETAIL_1_Y = 380;
-  constexpr int LEFT_DETAIL_2_Y = LEFT_DETAIL_1_Y + LEFT_DETAIL_GAP;
-  constexpr int LEFT_DETAIL_3_Y = LEFT_DETAIL_2_Y + LEFT_DETAIL_GAP;
 
   // shared route-row geometry
   constexpr int ROUTE_GAP = 14;
@@ -143,7 +138,10 @@ RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastCities[96] = ""; // origin/destination city text
-RTC_DATA_ATTR char     rtcLastAircraft[80] = ""; // type code + tail number
+RTC_DATA_ATTR char     rtcLastAircraft[80] = ""; // aircraft type label
+RTC_DATA_ATTR char     rtcLastIdentity[96] = ""; // callsign + tail number
+RTC_DATA_ATTR char     rtcLastAirline[96] = ""; // airline of last plane
+RTC_DATA_ATTR char     rtcLastCategory[8] = ""; // ADS-B category for last icon choice
 RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
 RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
@@ -162,6 +160,7 @@ struct Climate {
 
 struct Plane {
   bool   found = false;
+  bool   hasGs = false, hasVrate = false;
   String callsign, hex, category, typeCode, typeDesc, reg, airline;
   String fromCity, fromCode, toCity, toCode;
   double altFt = 0;
@@ -169,14 +168,20 @@ struct Plane {
   double gsKt = 0, vrateFpm = 0;      // ground speed (knots), vertical rate (ft/min)
 };
 
+enum FetchResult {
+  FETCH_ERROR,
+  FETCH_EMPTY,
+  FETCH_FOUND
+};
+
 struct LeftColumnView {
   char glyph;
   uint8_t glyphSize;
   String title;
-  String subtitle;
   String routeFrom;
   String routeTo;
   String line1;
+  String line2;
   String position;
 };
 
@@ -363,6 +368,7 @@ static void loadConfig() {
   spiSD.begin(pin::SD_SCK, pin::SD_MISO, pin::SD_MOSI, pin::SD_CS);
   if (!SD.begin(pin::SD_CS, spiSD)) {
     LOG("[sd] init failed — no card or wiring issue\n");
+    digitalWrite(pin::SD_EN, LOW);
     return;
   }
 
@@ -370,6 +376,7 @@ static void loadConfig() {
   if (!f) {
     LOG("[sd] /config.txt not found\n");
     SD.end();
+    digitalWrite(pin::SD_EN, LOW);
     return;
   }
 
@@ -459,7 +466,7 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
 }
 
 // adsb.lol: pick the nearest aircraft in 3D (minimum slant distance).
-static bool fetchOverhead(Plane& best) {
+static FetchResult fetchOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
   char url[160];
   snprintf(url, sizeof(url), "https://%s/v2/point/%.5f/%.5f/%d",
@@ -471,7 +478,7 @@ static bool fetchOverhead(Plane& best) {
     f[k] = true;
 
   JsonDocument doc;
-  if (!httpGetJson(url, doc, &filter)) return false;
+  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
 
   double bestSlant = 1e9;
   for (JsonObject a : doc["ac"].as<JsonArray>()) {
@@ -497,12 +504,14 @@ static bool fetchOverhead(Plane& best) {
     if (!best.typeDesc.length()) best.typeDesc = best.typeCode;
     best.reg       = jsonText(a["r"]);
     best.slantKm   = slantKm;
-    best.gsKt      = a["gs"].isNull() ? 0 : a["gs"].as<double>();
-    best.vrateFpm  = a["baro_rate"].isNull() ? 0 : a["baro_rate"].as<double>();
+    best.hasGs     = !a["gs"].isNull();
+    best.gsKt      = best.hasGs ? a["gs"].as<double>() : 0;
+    best.hasVrate  = !a["baro_rate"].isNull();
+    best.vrateFpm  = best.hasVrate ? a["baro_rate"].as<double>() : 0;
   }
   LOG("[adsb] %s @ %.1f km (3D)\n",
       best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
-  return best.found;
+  return best.found ? FETCH_FOUND : FETCH_EMPTY;
 }
 
 // adsbdb: airline + origin/destination airport, from the callsign.
@@ -598,15 +607,11 @@ static String speedStr(double kt) {
 static const char* trendWord(double fpm) {
   if (fpm >  150) return "climbing";
   if (fpm < -150) return "descending";
-  return "level flight";
+  return "level";
 }
 
 static String aircraftLabel(const Plane& p) {
   String s = p.typeCode.length() ? p.typeCode : p.typeDesc;
-  if (p.reg.length()) {
-    if (s.length()) s += " ";
-    s += p.reg;
-  }
   if (!s.length()) s = p.callsign.length() ? p.callsign : p.hex;
   if (!s.length()) s = "Aircraft";
   return s;
@@ -623,20 +628,26 @@ static bool sameAircraftText(const String& a, const String& b) {
   return normalizeAircraftText(a) == normalizeAircraftText(b);
 }
 
+static String aircraftIdentity(const Plane& p) {
+  String s = p.callsign.length() ? p.callsign : "";
+  if (p.reg.length()) {
+    if (!s.length()) s = p.reg;
+    else if (!sameAircraftText(s, p.reg)) {
+      s += " (";
+      s += p.reg;
+      s += ")";
+    }
+  }
+  if (!s.length()) s = p.hex;
+  return s;
+}
+
 static bool isHelicopter(const Plane& p) {
   return p.category == "A7";
 }
 
-static String routeCodeLine(const String& fromCode, const String& toCode) {
-  if (!fromCode.length() && !toCode.length()) return "";
-  String s = fromCode.length() ? fromCode : "???";
-  s += " -> ";
-  s += toCode.length() ? toCode : "???";
-  return s;
-}
-
-static String routeCodeLine(const Plane& p) {
-  return routeCodeLine(p.fromCode, p.toCode);
+static bool isHelicopterCategory(const char* category) {
+  return strcmp(category, "A7") == 0;
 }
 
 static String routeCities(const Plane& p) {
@@ -649,8 +660,18 @@ static String routeCities(const Plane& p) {
   return cities;
 }
 
+static void appendMotionPart(String& text, const String& part) {
+  if (!part.length()) return;
+  if (text.length()) text += "  ...  ";
+  text += part;
+}
+
 static String motionText(const Plane& p) {
-  return altStr(p.altFt) + " (" + trendWord(p.vrateFpm) + ") · " + speedStr(p.gsKt);
+  String text;
+  appendMotionPart(text, altStr(p.altFt));
+  if (p.hasVrate) appendMotionPart(text, trendWord(p.vrateFpm));
+  if (p.hasGs) appendMotionPart(text, speedStr(p.gsKt));
+  return text;
 }
 
 static Plane demoPlane() {
@@ -671,16 +692,21 @@ static Plane demoPlane() {
   p.slantKm = 8.2;
   p.gsKt = 421;
   p.vrateFpm = 850;
+  p.hasGs = true;
+  p.hasVrate = true;
   return p;
 }
 
 static void rememberLastSeen(const Plane& p) {
   String s = p.airline.length() ? p.airline : p.callsign;
   s.toCharArray(rtcLastSeen, sizeof(rtcLastSeen));
+  p.airline.toCharArray(rtcLastAirline, sizeof(rtcLastAirline));
   p.fromCode.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
   p.toCode.toCharArray(rtcLastTo, sizeof(rtcLastTo));
   routeCities(p).toCharArray(rtcLastCities, sizeof(rtcLastCities));
   aircraftLabel(p).toCharArray(rtcLastAircraft, sizeof(rtcLastAircraft));
+  aircraftIdentity(p).toCharArray(rtcLastIdentity, sizeof(rtcLastIdentity));
+  p.category.toCharArray(rtcLastCategory, sizeof(rtcLastCategory));
   p.typeDesc.toCharArray(rtcLastType, sizeof(rtcLastType));
   p.reg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
   motionText(p).toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
@@ -737,9 +763,9 @@ static void drawFrameHeader(int batt) {
 }
 
 static void drawFrameFooter() {
-  epaper.setFreeFont(&FreeSans9pt7b);
-  epaper.setTextDatum(TR_DATUM);
-  epaper.drawString("updated " + hhmm(), ui::SCREEN_W - ui::MARGIN, ui::FOOTER_Y);
+  epaper.setFreeFont(&FreeSansBold12pt7b);
+  epaper.setTextDatum(MC_DATUM);
+  epaper.drawString("Last refreshed " + hhmm(), ui::SCREEN_W / 2, ui::FOOTER_Y);
   epaper.setTextDatum(TL_DATUM);
 }
 
@@ -749,19 +775,19 @@ static bool hasRoute(const LeftColumnView& v) {
 
 static int leftTextRowCount(const LeftColumnView& v) {
   int count = 0;
-  if (v.subtitle.length()) count++;
-  if (hasRoute(v)) count++;
   if (v.line1.length()) count++;
+  if (v.line2.length()) count++;
+  if (hasRoute(v)) count++;
   if (v.position.length()) count++;
   return count;
 }
 
 static int leftRowHeight(const LeftColumnView& v, uint8_t row) {
   uint8_t visible = 0;
-  if (v.subtitle.length() && visible++ == row) return 36;
+  if (v.line1.length() && visible++ == row) return 36;
+  if (v.line2.length() && visible++ == row) return 36;
   if (hasRoute(v) && visible++ == row) return 54;
-  if (v.line1.length() && visible++ == row) return 30;
-  if (v.position.length() && visible++ == row) return 30;
+  if (v.position.length() && visible++ == row) return 36;
   return 0;
 }
 
@@ -775,6 +801,68 @@ static void drawLeftText(int cx, int y, const String& text, const GFXfont* font)
   epaper.setFreeFont(font);
   epaper.setTextDatum(MC_DATUM);
   epaper.drawString(fit(text, ui::LEFT_TEXT_W), cx, y);
+}
+
+static void drawPositionText(int cx, int y, const String& text) {
+  const String sep = "  ...  ";
+  String part[3];
+  int count = 0;
+  int start = 0;
+  while (count < 3) {
+    int split = text.indexOf(sep, start);
+    part[count++] = split < 0 ? text.substring(start) : text.substring(start, split);
+    if (split < 0) break;
+    start = split + sep.length();
+  }
+  if (count <= 1) {
+    drawLeftText(cx, y, text, &FreeSans18pt7b);
+    return;
+  }
+
+  epaper.setFreeFont(&FreeSans18pt7b);
+  int sepW = 22;
+  const GFXfont* motionFont = &FreeSans18pt7b;
+  int width[3];
+  int totalW = 0;
+  for (int i = 0; i < count; i++) {
+    width[i] = epaper.textWidth(part[i]);
+    totalW += width[i];
+  }
+  totalW += sepW * (count - 1);
+  if (totalW > ui::LEFT_TEXT_W) {
+    epaper.setFreeFont(&FreeSans12pt7b);
+    motionFont = &FreeSans12pt7b;
+    sepW = 18;
+    totalW = 0;
+    for (int i = 0; i < count; i++) {
+      width[i] = epaper.textWidth(part[i]);
+      totalW += width[i];
+    }
+    totalW += sepW * (count - 1);
+    if (totalW > ui::LEFT_TEXT_W) {
+      String compact;
+      for (int i = 0; i < count; i++) {
+        if (compact.length()) compact += " ";
+        compact += part[i];
+      }
+      drawLeftText(cx, y, compact, &FreeSans12pt7b);
+      return;
+    }
+  }
+
+  int x = cx - totalW / 2;
+  epaper.setTextDatum(MC_DATUM);
+  epaper.setFreeFont(motionFont);
+  for (int i = 0; i < count; i++) {
+    epaper.drawString(part[i], x + width[i] / 2, y);
+    x += width[i];
+    if (i < count - 1) {
+      drawIconCentered(icon::DOT, x + sepW / 2, y, icon::DOT_SIZE);
+      epaper.setFreeFont(motionFont);
+      epaper.setTextDatum(MC_DATUM);
+      x += sepW;
+    }
+  }
 }
 
 static void drawLeftRoute(const LeftColumnView& v, int cx, int y) {
@@ -796,20 +884,20 @@ static void drawLeftColumn(const LeftColumnView& v) {
   drawLeftText(cx, y + 21, v.title, &FreeSansBold24pt7b);
   y += 42;
 
-  if (v.subtitle.length()) {
-    drawLeftText(cx, y + 18, v.subtitle, &FreeSans18pt7b);
+  if (v.line1.length()) {
+    drawLeftText(cx, y + 18, v.line1, &FreeSans18pt7b);
+    y += 36;
+  }
+  if (v.line2.length()) {
+    drawLeftText(cx, y + 18, v.line2, &FreeSans18pt7b);
     y += 36;
   }
   if (hasRoute(v)) {
     drawLeftRoute(v, cx, y + 27);
     y += 54;
   }
-  if (v.line1.length()) {
-    drawLeftText(cx, y + 15, v.line1, &FreeSans12pt7b);
-    y += 30;
-  }
   if (v.position.length()) {
-    drawLeftText(cx, y + 15, v.position, &FreeSans12pt7b);
+    drawPositionText(cx, y + 18, v.position);
   }
   epaper.setTextDatum(TL_DATUM);
 }
@@ -820,21 +908,21 @@ static void drawPlane(const Plane& p) {
   v.glyph = isHelicopter(p) ? icon::HELICOPTER_LARGE : icon::PLANE_LARGE;
   v.glyphSize = isHelicopter(p) ? icon::HELICOPTER_LARGE_SIZE : icon::PLANE_LARGE_SIZE;
   v.title = label;
-  v.subtitle = p.airline;
   v.routeFrom = p.fromCode;
   v.routeTo = p.toCode;
-  v.line1 = p.callsign;
+  v.line1 = aircraftIdentity(p);
+  if (sameAircraftText(v.title, v.line1)) v.line1 = "";
+  v.line2 = p.airline;
   v.position = motionText(p);
   drawLeftColumn(v);
 }
 
 static void drawEmpty() {
-  if (!strlen(rtcLastSeen)) {
+  if (!strlen(rtcLastAircraft) && !strlen(rtcLastIdentity) && !strlen(rtcLastSeen)) {
     LeftColumnView v;
-    v.glyph = icon::SUN;
-    v.glyphSize = icon::SUN_SIZE;
+    v.glyph = icon::CLOUDY_LARGE;
+    v.glyphSize = icon::CLOUDY_LARGE_SIZE;
     v.title = "Clear skies";
-    v.subtitle = "Nothing overhead";
     drawLeftColumn(v);
     return;
   }
@@ -842,19 +930,15 @@ static void drawEmpty() {
   String meta;
   if (strlen(rtcLastAircraft)) meta = String(rtcLastAircraft);
   else if (strlen(rtcLastType)) meta = String(rtcLastType);
-  if (strlen(rtcLastReg)) {
-    String reg = String(rtcLastReg);
-    if (meta.indexOf(reg) < 0) {
-      if (meta.length()) meta += " ";
-      meta += reg;
-    }
-  }
 
   LeftColumnView v;
-  v.glyph = icon::SUN;
-  v.glyphSize = icon::SUN_SIZE;
-  v.title = "Last seen";
-  v.subtitle = meta.length() ? meta : "Last seen aircraft";
+  bool helicopter = isHelicopterCategory(rtcLastCategory);
+  v.glyph = helicopter ? icon::HELICOPTER_LARGE : icon::PLANE_LARGE;
+  v.glyphSize = helicopter ? icon::HELICOPTER_LARGE_SIZE : icon::PLANE_LARGE_SIZE;
+  v.title = meta.length() ? meta : "Aircraft";
+  v.line1 = strlen(rtcLastIdentity) ? String(rtcLastIdentity) : String(rtcLastSeen);
+  v.line2 = String(rtcLastAirline);
+  if (sameAircraftText(v.line1, v.line2)) v.line2 = "";
   v.routeFrom = String(rtcLastFrom);
   v.routeTo = String(rtcLastTo);
   v.position = String(rtcLastMotion);
@@ -975,7 +1059,12 @@ void setup() {
   }
 
   Plane p;
-  bool got = fetchOverhead(p);
+  FetchResult fetchResult = fetchOverhead(p);
+  if (fetchResult == FETCH_ERROR) {
+    goSleep(timing::RETRY_SECONDS);
+  }
+
+  bool got = fetchResult == FETCH_FOUND;
   if (got) fetchRoute(p);
 
   if (got) {                                       // remember for the empty-sky screen
@@ -990,14 +1079,16 @@ void setup() {
   char sig[320];
   int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
   if (got)
-    snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%s|%s|%ld|%ld|%d",
-             p.hex.c_str(), p.category.c_str(), p.airline.c_str(), p.fromCode.c_str(),
-             p.toCode.c_str(), p.typeCode.c_str(), p.typeDesc.c_str(), p.reg.c_str(),
+    snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%s|%s|%s|%d|%d|%ld|%ld|%d",
+             p.hex.c_str(), p.category.c_str(), p.airline.c_str(), p.callsign.c_str(),
+             p.fromCode.c_str(), p.toCode.c_str(), p.typeCode.c_str(), p.typeDesc.c_str(),
+             p.reg.c_str(), p.hasVrate ? 1 : 0, p.hasGs ? 1 : 0,
              lround(p.altFt / 500.0), lround(p.slantKm / 5.0), lowBucket);
   else
-    snprintf(sig, sizeof(sig), "E|%d|%s|%s|%s|%s|%s|%s|%s|%s",
+    snprintf(sig, sizeof(sig), "E|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
              lowBucket, rtcLastSeen, rtcLastFrom, rtcLastTo, rtcLastCities,
-             rtcLastAircraft, rtcLastType, rtcLastReg, rtcLastMotion);
+             rtcLastAircraft, rtcLastIdentity, rtcLastAirline, rtcLastCategory, rtcLastType,
+             rtcLastReg, rtcLastMotion);
 
   if (strcmp(sig, rtcSig) != 0) {
     if (rtcRedraws > 0 && rtcRedraws % timing::GHOST_CLEAN_EVERY == 0) {

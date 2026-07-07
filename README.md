@@ -1,6 +1,6 @@
 # Sky Overhead
 
-Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, including airline/callsign, route, aircraft type, tail number, altitude, and speed. The right side of the display shows the onboard room temperature and humidity sensor.
+Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, including aircraft type, callsign, tail number, airline, route, altitude, trend, and speed. The right side of the display shows the onboard room temperature and humidity sensor.
 
 The sketch is designed to run like a wall appliance: it sleeps between updates, keeps the e-paper image stable when the visible aircraft data has not changed, handles temporary network failures by leaving the last good screen up, and pauses aircraft checks during quiet hours.
 
@@ -57,6 +57,9 @@ NTP sync
   |
   v
 fetchOverhead()
+  |
+  +-- ADS-B request failed -> keep current screen, sleep 45 seconds
+  |
 fetchRoute() if an aircraft was found
 batteryPct()
 readClimate()
@@ -77,14 +80,16 @@ The sketch stores a small amount of state in `RTC_DATA_ATTR`, which survives dee
 
 ## Display Behavior
 
-- The left column shows the active aircraft or a clear-sky / last-seen view.
+- The left column shows the active aircraft or the retained last-seen aircraft.
 - The right column shows indoor temperature and humidity.
 - During quiet hours, the display switches to a moon-icon sleep screen while aircraft checks are paused.
-- The footer shows the local update time.
-- Aircraft type code and tail number are the primary aircraft label, for example `A321 OH-LZH`.
+- The footer shows a prominent local `Last refreshed` time.
+- Aircraft type code is the primary aircraft label, for example `A321`.
+- Callsign and tail number are shown below the type, for example `FIN7EH (OH-LZH)`, with airline below that line.
 - Rotorcraft use a helicopter glyph when ADS-B reports rotorcraft category `A7`; there is no type-code fallback.
-- The clear-sky view shows `Last seen`, then the retained aircraft label, retained route, and motion details.
-- Aircraft altitude is shown with its vertical trend in parentheses, such as `FL110 (climbing)`.
+- When no current aircraft is found, the display keeps the retained aircraft layout and previous aircraft glyph with a prominent `Last refreshed` time.
+- Aircraft altitude, vertical trend, and speed are shown as three fields, for example `FL132 | climbing | 307 kts`, with bold dot markers drawn between them.
+- Missing aircraft fields are omitted instead of reserving blank rows; following rows move up.
 - A signature skip prevents unnecessary e-paper refreshes when visible aircraft state has not changed.
 - Every 20 redraws, the sketch runs a full white refresh before the normal draw to reduce accumulated ghosting.
 
@@ -202,7 +207,7 @@ Display and behavior fields:
 - `RADIUS`: aircraft search radius in kilometers
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
-- `DEMO`: `1` to skip network fetches and cycle through dummy live, clear-skies, and night screens for layout iteration; `0` for normal operation
+- `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 
 The sketch has defaults for units, radius, and sleep interval. Quiet hours are disabled unless `NIGHT_MODE` is configured. Wi-Fi and observer location must be correct for the app to work usefully. If the SD card is missing or `config.txt` cannot be read, the device will boot, leave Wi-Fi disconnected, and retry after a short sleep.
 

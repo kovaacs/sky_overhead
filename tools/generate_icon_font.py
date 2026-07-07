@@ -29,6 +29,8 @@ ICONS = [
     ("BATTERY_FULL", "battery-full.svg", "J", 32, DEFAULT_STROKE_WIDTH),
     ("PLANE_LARGE", "plane.svg", "K", 144, DEFAULT_STROKE_WIDTH),
     ("HELICOPTER_LARGE", "helicopter.svg", "L", 144, DEFAULT_STROKE_WIDTH),
+    ("CLOUDY_LARGE", "cloudy.svg", "M", 144, DEFAULT_STROKE_WIDTH),
+    ("DOT", "dot.svg", "N", 32, "4"),
 ]
 
 
