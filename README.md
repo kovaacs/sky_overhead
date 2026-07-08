@@ -20,7 +20,7 @@ The sketch is designed to run like a wall appliance: it sleeps between updates, 
 The sketch uses keyless public APIs:
 
 - `adsb.lol` for live aircraft position, aircraft type, and registration
-- `adsbdb.com` for airline and origin/destination lookup by callsign
+- `adsb.im` for route lookup by callsign plus live aircraft position
 
 ## Local Files
 
@@ -88,6 +88,7 @@ The sketch stores a small amount of state in `RTC_DATA_ATTR`, which survives dee
 - Callsign and tail number are shown below the type, for example `FIN7EH (OH-LZH)`, with airline below that line.
 - Rotorcraft use a helicopter glyph when ADS-B reports rotorcraft category `A7`; there is no type-code fallback.
 - When no current aircraft is found, the display keeps the retained aircraft layout and previous aircraft glyph with a prominent `Last refreshed` time.
+- Route lookup uses the tar1090 routeset API, which includes the aircraft's live position with the callsign.
 - Aircraft altitude, vertical trend, and speed are shown as three fields, for example `FL132 | climbing | 307 kts`, with bold dot markers drawn between them.
 - Missing aircraft fields are omitted instead of reserving blank rows; following rows move up.
 - A signature skip prevents unnecessary e-paper refreshes when visible aircraft state has not changed.

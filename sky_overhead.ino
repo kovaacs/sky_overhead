@@ -9,7 +9,7 @@
  *
  * Data (both keyless):
  *   adsb.lol   — live position, aircraft type, registration
- *   adsbdb.com — airline + origin/destination airport, looked up by callsign
+ *   adsb.im    — route lookup using callsign + live position
  *
  * Build settings:
  *   Display : Seeed_GFX   (driver.h must contain: #define BOARD_SCREEN_COMBO 520)
@@ -137,6 +137,7 @@ RTC_DATA_ATTR char     rtcSig[320]     = "";   // signature of what's on screen
 RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
+RTC_DATA_ATTR char     rtcLastRouteKey[40] = ""; // callsign/hex used for retained route
 RTC_DATA_ATTR char     rtcLastCities[96] = ""; // origin/destination city text
 RTC_DATA_ATTR char     rtcLastAircraft[80] = ""; // aircraft type label
 RTC_DATA_ATTR char     rtcLastIdentity[96] = ""; // callsign + tail number
@@ -161,9 +162,10 @@ struct Climate {
 struct Plane {
   bool   found = false;
   bool   hasGs = false, hasVrate = false;
+  bool   routeOk = false;
   String callsign, hex, category, typeCode, typeDesc, reg, airline;
   String fromCity, fromCode, toCity, toCode;
-  double altFt = 0;
+  double lat = 0, lon = 0, altFt = 0;
   double slantKm = 0;                 // true 3D straight-line distance
   double gsKt = 0, vrateFpm = 0;      // ground speed (knots), vertical rate (ft/min)
 };
@@ -465,6 +467,35 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
   return true;
 }
 
+static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  if (!http.begin(client, url)) {
+    LOG("[http] begin failed\n");
+    return false;
+  }
+  http.addHeader("Accept", "application/json");
+  http.addHeader("Content-Type", "application/json");
+  http.setUserAgent(USER_AGENT);
+  http.setConnectTimeout(timing::HTTP_TIMEOUT);
+  http.setTimeout(timing::HTTP_TIMEOUT);
+
+  int code = http.POST(body);
+  if (code != 200) {
+    LOG("[http] POST %d  %s\n", code, url.c_str());
+    http.end();
+    return false;
+  }
+  DeserializationError err = deserializeJson(doc, http.getStream());
+  http.end();
+  if (err) {
+    LOG("[http] JSON error: %s\n", err.c_str());
+    return false;
+  }
+  return true;
+}
+
 // adsb.lol: pick the nearest aircraft in 3D (minimum slant distance).
 static FetchResult fetchOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
@@ -498,6 +529,8 @@ static FetchResult fetchOverhead(Plane& best) {
     best.hex       = jsonText(a["hex"]);
     best.callsign  = jsonText(a["flight"]);
     best.category  = jsonText(a["category"]);
+    best.lat       = lat;
+    best.lon       = lon;
     best.altFt     = altFt;
     best.typeCode  = jsonText(a["t"]);
     best.typeDesc  = jsonText(a["desc"]);
@@ -514,29 +547,50 @@ static FetchResult fetchOverhead(Plane& best) {
   return best.found ? FETCH_FOUND : FETCH_EMPTY;
 }
 
-// adsbdb: airline + origin/destination airport, from the callsign.
+// tar1090 routeset: route lookup by callsign plus live aircraft position.
 static void fetchRoute(Plane& p) {
   if (!p.callsign.length()) return;
 
+  JsonDocument bodyDoc;
+  JsonObject plane = bodyDoc["planes"].add<JsonObject>();
+  plane["callsign"] = p.callsign;
+  plane["lat"] = p.lat;
+  plane["lng"] = p.lon;
+  String body;
+  serializeJson(bodyDoc, body);
+
   JsonDocument doc;
-  if (!httpGetJson("https://api.adsbdb.com/v0/callsign/" + p.callsign, doc)) return;
+  if (!httpPostJson("https://adsb.im/api/0/routeset", body, doc)) {
+    return;
+  }
 
-  JsonObject fr = doc["response"]["flightroute"];
-  if (fr.isNull()) return;                        // unknown route (GA / military)
+  JsonObject route = doc[0];
+  if (route.isNull()) {
+    return;
+  }
 
-  p.airline = jsonText(fr["airline"]["name"]);
-  auto city = [](JsonObject ap) -> String {
-    if (ap.isNull()) return "";
-    String s = jsonText(ap["municipality"]);
-    return s.length() ? s : jsonText(ap["name"]);
-  };
-  auto code = [](JsonObject ap) -> String {
-    if (ap.isNull()) return "";
-    String s = jsonText(ap["iata_code"]);
-    return s.length() ? s : jsonText(ap["icao_code"]);
-  };
-  p.fromCity = city(fr["origin"]);      p.fromCode = code(fr["origin"]);
-  p.toCity   = city(fr["destination"]); p.toCode   = code(fr["destination"]);
+  if (route["airline"].is<JsonObject>()) {
+    String airline = jsonText(route["airline"]["name"]);
+    if (airline.equalsIgnoreCase("unknown")) airline = "";
+    if (airline.length()) p.airline = airline;
+  }
+
+  if (route["plausible"].is<bool>() && !route["plausible"].as<bool>()) {
+    return;
+  }
+
+  JsonArray airports = route["_airports"].as<JsonArray>();
+  if (airports.size() >= 2) {
+    JsonObject origin = airports[0];
+    JsonObject destination = airports[airports.size() - 1];
+    p.fromCity = jsonText(origin["location"]);
+    p.toCity = jsonText(destination["location"]);
+    p.fromCode = jsonText(origin["iata"]);
+    p.toCode = jsonText(destination["iata"]);
+    if (!p.fromCode.length()) p.fromCode = jsonText(origin["icao"]);
+    if (!p.toCode.length()) p.toCode = jsonText(destination["icao"]);
+    p.routeOk = p.fromCode.length() || p.toCode.length();
+  }
 }
 
 // ============================ DRAW HELPERS ==========================
@@ -628,6 +682,11 @@ static bool sameAircraftText(const String& a, const String& b) {
   return normalizeAircraftText(a) == normalizeAircraftText(b);
 }
 
+static String routeKey(const Plane& p) {
+  if (p.callsign.length()) return p.callsign;
+  return p.hex;
+}
+
 static String aircraftIdentity(const Plane& p) {
   String s = p.callsign.length() ? p.callsign : "";
   if (p.reg.length()) {
@@ -660,6 +719,13 @@ static String routeCities(const Plane& p) {
   return cities;
 }
 
+static void applyRetainedRouteIfSame(Plane& p) {
+  if (p.routeOk || !strlen(rtcLastRouteKey)) return;
+  if (routeKey(p) != String(rtcLastRouteKey)) return;
+  p.fromCode = String(rtcLastFrom);
+  p.toCode = String(rtcLastTo);
+}
+
 static void appendMotionPart(String& text, const String& part) {
   if (!part.length()) return;
   if (text.length()) text += "  ...  ";
@@ -683,6 +749,7 @@ static Plane demoPlane() {
   p.airline = "Lufthansa";
   p.fromCode = "MUC";
   p.toCode = "BUD";
+  p.routeOk = true;
   p.fromCity = "Munich";
   p.toCity = "Budapest";
   p.typeCode = "A20N";
@@ -699,11 +766,20 @@ static Plane demoPlane() {
 
 static void rememberLastSeen(const Plane& p) {
   String s = p.airline.length() ? p.airline : p.callsign;
+  String key = routeKey(p);
   s.toCharArray(rtcLastSeen, sizeof(rtcLastSeen));
   p.airline.toCharArray(rtcLastAirline, sizeof(rtcLastAirline));
-  p.fromCode.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
-  p.toCode.toCharArray(rtcLastTo, sizeof(rtcLastTo));
-  routeCities(p).toCharArray(rtcLastCities, sizeof(rtcLastCities));
+  if (p.routeOk) {
+    key.toCharArray(rtcLastRouteKey, sizeof(rtcLastRouteKey));
+    p.fromCode.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
+    p.toCode.toCharArray(rtcLastTo, sizeof(rtcLastTo));
+    routeCities(p).toCharArray(rtcLastCities, sizeof(rtcLastCities));
+  } else if (key != String(rtcLastRouteKey)) {
+    rtcLastRouteKey[0] = '\0';
+    rtcLastFrom[0] = '\0';
+    rtcLastTo[0] = '\0';
+    rtcLastCities[0] = '\0';
+  }
   aircraftLabel(p).toCharArray(rtcLastAircraft, sizeof(rtcLastAircraft));
   aircraftIdentity(p).toCharArray(rtcLastIdentity, sizeof(rtcLastIdentity));
   p.category.toCharArray(rtcLastCategory, sizeof(rtcLastCategory));
@@ -1065,7 +1141,10 @@ void setup() {
   }
 
   bool got = fetchResult == FETCH_FOUND;
-  if (got) fetchRoute(p);
+  if (got) {
+    fetchRoute(p);
+    applyRetainedRouteIfSame(p);
+  }
 
   if (got) {                                       // remember for the empty-sky screen
     rememberLastSeen(p);
