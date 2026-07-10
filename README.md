@@ -24,9 +24,18 @@ The sketch uses keyless public APIs:
 
 ## Local Files
 
-- `sky_overhead.ino`: main sketch
+- `sky_overhead.ino`: main sketch and hardware orchestration
+- `Aircraft.h`: aircraft data model and display formatting helpers
+- `AdsbParser.h`, `RouteParser.h`, `JsonHelpers.h`: ADS-B and route JSON parsing
+- `Climate.h`, `ClimateSensor.h`: temperature/humidity formatting and SHT4x retry logic
+- `Config.h`: SD-card config parsing and runtime settings
+- `DisplayView.h`, `DisplayRenderer.h`: display view models and rendering
+- `RetainedState.h`: RTC-retained aircraft and signature state
+- `TimeRules.h`: quiet-hours and wake scheduling rules
 - `driver.h`: display board selection, currently `BOARD_SCREEN_COMBO 520`
 - `IconFont.h`: generated bitmap icon font used by the display UI
+- `tools/test_*.cpp`: host-side unit tests for pure parsing, formatting, state, config, display-view, and timing logic
+- `tools/run_unit_tests.sh`: builds and runs the host-side unit test suite
 - `tools/generate_icon_font.py`: regenerates `IconFont.h` from Lucide SVG sources
 - `assets/icons/lucide/`: cached Lucide source SVGs and license
 
@@ -172,7 +181,7 @@ The device reads its runtime settings from a plain text file at the root of the 
 /config.txt
 ```
 
-Use a FAT-formatted microSD card. Create `config.txt` in the card root, not inside a folder. The file must use one `KEY=VALUE` pair per line. Do not quote values, and do not add spaces around `=`. Setting names are case-insensitive; documented option values such as `kts`, `metric`, `f`, `true`, and `on` are also case-insensitive.
+Use a FAT-formatted microSD card. Create `config.txt` in the card root, not inside a folder. The file must use one `KEY=VALUE` pair per line. Spaces around `=` are accepted. Do not quote values. Setting names are case-insensitive; documented option values such as `kts`, `metric`, `f`, `true`, and `on` are also case-insensitive. Blank lines and lines beginning with `#` are ignored.
 
 Minimal working example:
 
@@ -221,6 +230,20 @@ Example observer altitude:
 
 - Use meters above sea level, not feet.
 - If unknown, use a reasonable local estimate; it mainly affects aircraft distance and overhead filtering.
+
+## Tests
+
+Run the host-side unit suite before compiling or flashing:
+
+```bash
+tools/run_unit_tests.sh
+```
+
+The tests cover the pure logic that can run without the board: aircraft/climate formatting, display-view layout decisions, cascade behavior, config parsing, quiet-hours timing, retained state, and JSON parsers. The runner auto-detects ArduinoJson in the usual Arduino library folders. If ArduinoJson is elsewhere, set it explicitly:
+
+```bash
+ARDUINO_JSON_INC=/path/to/ArduinoJson/src tools/run_unit_tests.sh
+```
 
 ## Compile
 
