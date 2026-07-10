@@ -1,8 +1,8 @@
 # Sky Overhead
 
-Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, including aircraft type, callsign, tail number, airline, route, altitude, trend, and speed. The right side of the display shows the onboard room temperature and humidity sensor.
+Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
 
-The sketch is designed to run like a wall appliance: it sleeps between updates, keeps the e-paper image stable when the visible aircraft data has not changed, handles temporary network failures by leaving the last good screen up, and pauses aircraft checks during quiet hours.
+It is built to behave like a quiet wall appliance: wake, fetch, redraw only when the visible data changes, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
 
 ## Hardware
 
@@ -41,7 +41,7 @@ The sketch uses keyless public APIs:
 
 ## Runtime Lifecycle
 
-Every update cycle is a full reboot from deep sleep. Nothing runs in the background while the device sleeps; the e-paper panel passively holds the last image.
+Each update is a full reboot from deep sleep. While the device sleeps, only the e-paper panel holds the previous image.
 
 ```text
 DEEP SLEEP
@@ -85,32 +85,23 @@ save rtcSig
 sleep BUSY seconds
 ```
 
-The sketch stores a small amount of state in `RTC_DATA_ATTR`, which survives deep sleep but not a full power loss. That includes the last rendered signature, last-seen aircraft details, last-seen route, timestamp, and redraw count.
+State that must survive deep sleep lives in `RTC_DATA_ATTR`: the last rendered signature, last-seen aircraft, last route, timestamp, and redraw count. It is lost on full power loss.
 
 ## Display Behavior
 
-- The left column shows the active aircraft or the retained last-seen aircraft.
-- The right column shows indoor temperature and humidity.
-- During quiet hours, the display switches to a moon-icon sleep screen while aircraft checks are paused.
-- The footer shows a prominent local `Last refreshed` time.
-- Aircraft type code is the primary aircraft label, for example `A321`.
-- Callsign and tail number are shown below the type, for example `FIN7EH (OH-LZH)`, with airline below that line.
-- Rotorcraft use a helicopter glyph when ADS-B reports rotorcraft category `A7`; there is no type-code fallback.
-- When no current aircraft is found, the display keeps the retained aircraft layout and previous aircraft glyph with a prominent `Last refreshed` time.
-- Route lookup uses the tar1090 routeset API, which includes the aircraft's live position with the callsign.
-- Aircraft altitude, vertical trend, and speed are shown as three fields, for example `FL132 | climbing | 307 kts`, with bold dot markers drawn between them.
-- Missing aircraft fields are omitted instead of reserving blank rows; following rows move up.
-- A signature skip prevents unnecessary e-paper refreshes when visible aircraft state has not changed.
-- Every 20 redraws, the sketch runs a full white refresh before the normal draw to reduce accumulated ghosting.
+- Left column: active aircraft, or retained last-seen aircraft when nothing current is found.
+- Right column: indoor temperature and humidity.
+- Quiet hours: moon-icon sleep screen while aircraft checks are paused.
+- Footer: prominent local `Last refreshed` time.
+- Primary aircraft label: type code such as `A321`; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
+- Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
+- Detail row: altitude, vertical trend, and speed, for example `FL132 | climbing | 307 kts`.
+- Missing aircraft fields collapse upward instead of leaving blank rows.
+- Unchanged visible state skips the e-paper refresh; every 20 redraws, a full white refresh reduces accumulated ghosting.
 
-The display is intentionally not always live. The device wakes, fetches current data, decides whether the visible state has changed enough to justify an e-paper refresh, then goes back to deep sleep. This trades second-by-second accuracy for much lower energy use, less e-paper flashing, and less ghosting. When the screen does refresh, it is drawn from the latest data collected during that wake cycle.
+The screen is intentionally not live second-by-second. Each wake uses fresh data, but refreshes only when the visible state changes enough to justify an e-paper update. Drawing happens in the display RAM buffer first; the slow panel transfer happens during `epaper.update()`.
 
-Rendering happens in the display library's RAM buffer first. The slow e-paper transfer only happens during `epaper.update()`.
-
-Reusable display glyphs are generated from Lucide SVGs. The generator downloads
-and caches missing source SVGs in `assets/icons/lucide/`. After adding or
-changing icons, install `rsvg-convert` and ImageMagick's `magick` command, then
-run:
+Reusable display glyphs are generated from Lucide SVGs. The generator downloads and caches missing source SVGs in `assets/icons/lucide/`. After adding or changing icons, install `rsvg-convert` and ImageMagick's `magick`, then run:
 
 ```bash
 python3 tools/generate_icon_font.py
@@ -125,7 +116,7 @@ python3 tools/generate_icon_font.py
 
 ## Arduino Setup
 
-Install Arduino CLI, then install the ESP32 board package and required libraries.
+Install Arduino CLI, the ESP32 board package, and the required libraries.
 
 Add the Espressif package index if it is not already configured:
 
@@ -143,7 +134,7 @@ arduino-cli lib install "Sensirion I2C SHT4x"
 arduino-cli lib install "Sensirion Core"
 ```
 
-Install Seeed_GFX, which provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` display stack. It is not the stock Bodmer TFT_eSPI library. Install Seeed_GFX into your Arduino libraries folder, for example:
+Install Seeed_GFX into your Arduino libraries folder. This provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack; it is not the stock Bodmer TFT_eSPI library.
 
 ```bash
 cd ~/Documents/Arduino/libraries
@@ -156,7 +147,7 @@ The sketch includes `driver.h` with:
 #define BOARD_SCREEN_COMBO 520
 ```
 
-That selects Seeed's E1001 display setup (`Setup520_Seeed_reTerminal_E1001`). If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check that Seeed_GFX is installed and that `driver.h` is present next to `sky_overhead.ino`.
+That selects Seeed's E1001 display setup (`Setup520_Seeed_reTerminal_E1001`). If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check Seeed_GFX and `driver.h`.
 
 Seeed's reTerminal E Series Arduino cookbooks are useful references for the display and onboard peripherals:
 
@@ -175,13 +166,13 @@ The `460800` upload speed is intentional. On this USB-serial adapter, `921600` c
 
 ## SD Card Config
 
-The device reads its runtime settings from a plain text file at the root of the microSD card:
+Runtime settings are read from a plain text file at the root of the microSD card:
 
 ```text
 /config.txt
 ```
 
-Use a FAT-formatted microSD card. Create `config.txt` in the card root, not inside a folder. The file must use one `KEY=VALUE` pair per line. Spaces around `=` are accepted. Do not quote values. Setting names are case-insensitive; documented option values such as `kts`, `metric`, `f`, `true`, and `on` are also case-insensitive. Blank lines and lines beginning with `#` are ignored.
+Use a FAT-formatted card and create `config.txt` in the root directory. Use one `KEY=VALUE` pair per line. Spaces around `=` are accepted; quoted values are not needed. Setting names are case-insensitive, as are documented option values such as `kts`, `metric`, `f`, `true`, and `on`. Blank lines and `#` comments are ignored.
 
 Minimal working example:
 
@@ -219,7 +210,7 @@ Display and behavior fields:
 - `BUSY`: normal sleep interval in seconds
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 
-The sketch has defaults for units, radius, and sleep interval. Quiet hours are disabled unless `NIGHT_MODE` is configured. Wi-Fi and observer location must be correct for the app to work usefully. If the SD card is missing or `config.txt` cannot be read, the device will boot, leave Wi-Fi disconnected, and retry after a short sleep.
+Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. Wi-Fi and observer location must be valid for useful results. If the SD card or config file is missing, the device boots without Wi-Fi and retries after a short sleep.
 
 Example timezone values:
 
@@ -239,7 +230,7 @@ Run the host-side unit suite before compiling or flashing:
 tools/run_unit_tests.sh
 ```
 
-The tests cover the pure logic that can run without the board: aircraft/climate formatting, display-view layout decisions, cascade behavior, config parsing, quiet-hours timing, retained state, and JSON parsers. The runner auto-detects ArduinoJson in the usual Arduino library folders. If ArduinoJson is elsewhere, set it explicitly:
+The tests cover pure logic that can run without the board: aircraft and climate formatting, display-view layout, cascade behavior, config parsing, quiet-hours timing, retained state, and JSON parsers. The runner auto-detects ArduinoJson in the usual Arduino library folders. If ArduinoJson is elsewhere:
 
 ```bash
 ARDUINO_JSON_INC=/path/to/ArduinoJson/src tools/run_unit_tests.sh
@@ -272,7 +263,7 @@ Connect the device over USB and find the serial port:
 arduino-cli board list
 ```
 
-Use the port listed as a USB Serial Port, typically `/dev/cu.usbserial-*`. Skip Bluetooth ports. If no USB serial port appears, press RESET. If upload still cannot connect, hold BOOT, tap RESET, release BOOT, then retry to force ROM bootloader mode.
+Use the USB Serial Port, typically `/dev/cu.usbserial-*`; skip Bluetooth ports. If no USB serial port appears, press RESET. If upload still cannot connect, hold BOOT, tap RESET, release BOOT, then retry to force ROM bootloader mode.
 
 Upload with the detected `/dev/cu.*` port:
 
