@@ -17,89 +17,69 @@ It is built to behave like a quiet wall appliance: wake, fetch, redraw only when
 
 ## Data Sources
 
-The sketch uses keyless public APIs:
+The sketch can prefer a local ADS-B feeder and fall back to keyless public APIs:
 
-- `adsb.lol` for live aircraft position, aircraft type, and registration
+- local readsb/tar1090 `aircraft.json` via `LOCAL_ADSB_URL` for live aircraft position, aircraft type, and registration
+- `adsb.lol` as the public live-aircraft fallback
 - `adsb.im` for route lookup by callsign plus live aircraft position
-
-## Local Files
-
-- `sky_overhead.ino`: main sketch and hardware orchestration
-- `Aircraft.h`: aircraft data model and display formatting helpers
-- `AdsbParser.h`, `RouteParser.h`, `JsonHelpers.h`: ADS-B and route JSON parsing
-- `Climate.h`, `ClimateSensor.h`: temperature/humidity formatting and SHT4x retry logic
-- `Config.h`: SD-card config parsing and runtime settings
-- `DisplayView.h`, `DisplayRenderer.h`: display view models and rendering
-- `RetainedState.h`: RTC-retained aircraft and signature state
-- `TimeRules.h`: quiet-hours and wake scheduling rules
-- `driver.h`: display board selection, currently `BOARD_SCREEN_COMBO 520`
-- `IconFont.h`: generated bitmap icon font used by the display UI
-- `tools/test_*.cpp`: host-side unit tests for pure parsing, formatting, state, config, display-view, and timing logic
-- `tools/run_unit_tests.sh`: builds and runs the host-side unit test suite
-- `tools/generate_icon_font.py`: regenerates `IconFont.h` from Lucide SVG sources
-- `assets/icons/lucide/`: cached Lucide source SVGs and license
 
 ## Runtime Lifecycle
 
-Each update is a full reboot from deep sleep. While the device sleeps, only the e-paper panel holds the previous image.
+Each update is a full reboot from deep sleep. On wake, the sketch reads config, connects Wi-Fi, syncs time, skips aircraft checks during quiet hours, fetches aircraft and route data, redraws only if the visible state changed, then sleeps again.
 
 ```text
-DEEP SLEEP
-  |
-  | timer wake
-  v
-BOOT
-  - start Serial1
-  - read /config.txt from SD
-  - initialize e-paper
-  - initialize SHT4x
+Wake from deep sleep
   |
   v
-connect Wi-Fi
-  |
-  +-- Wi-Fi failed -> sleep 45 seconds
+Read /config.txt, initialize display and sensor
   |
   v
-NTP sync
+Connect Wi-Fi and sync time
   |
-  +-- quiet hours -> show night screen, sleep until morning
-  |
-  v
-fetchOverhead()
-  |
-  +-- ADS-B request failed -> keep current screen, sleep 45 seconds
-  |
-fetchRoute() if an aircraft was found
-batteryPct()
-readClimate()
+  +-- quiet hours -> draw sleep screen -> sleep until morning
   |
   v
-build visible-content signature
+Fetch aircraft
   |
-  +-- same as rtcSig -> skip drawing and sleep
+  +-- local feed configured -> try local feed first
+  |      |
+  |      +-- found aircraft -> use local feed
+  |      +-- empty/error    -> try adsb.lol
+  |
+  +-- no local feed -> try adsb.lol
+  |
+  +-- all aircraft fetches failed -> keep screen, retry soon
   |
   v
-draw into RAM buffer
-epaper.update()
-save rtcSig
-sleep BUSY seconds
+Fetch route from adsb.im when an aircraft was found
+  |
+  v
+Read battery and climate sensor
+  |
+  v
+Build visible-state signature
+  |
+  +-- unchanged -> skip e-paper refresh
+  |
+  v
+Draw, update e-paper, save state, sleep BUSY seconds
 ```
 
-State that must survive deep sleep lives in `RTC_DATA_ATTR`: the last rendered signature, last-seen aircraft, last route, timestamp, and redraw count. It is lost on full power loss.
+State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signature, last-seen aircraft, retained route, timestamp, and redraw count.
 
-## Display Behavior
+## Display
 
 - Left column: active aircraft, or retained last-seen aircraft when nothing current is found.
 - Right column: indoor temperature and humidity.
 - Quiet hours: moon-icon sleep screen while aircraft checks are paused.
-- Footer: prominent local `Last refreshed` time.
-- Primary aircraft label: type code such as `A321`; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
+- Footer: local `Last refreshed` time and data source, separated by a dot glyph.
+- Primary aircraft label: aircraft description such as `AIRBUS A-320neo` when it fits, otherwise the type code; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climbing | 307 kts`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
 - Unchanged visible state skips the e-paper refresh; every 20 redraws, a full white refresh reduces accumulated ghosting.
 
-The screen is intentionally not live second-by-second. Each wake uses fresh data, but refreshes only when the visible state changes enough to justify an e-paper update. Drawing happens in the display RAM buffer first; the slow panel transfer happens during `epaper.update()`.
+The screen is intentionally not live second-by-second. Each wake uses fresh data, but refreshes only when the visible state changes enough to justify an e-paper update.
 
 Reusable display glyphs are generated from Lucide SVGs. The generator downloads and caches missing source SVGs in `assets/icons/lucide/`. After adding or changing icons, install `rsvg-convert` and ImageMagick's `magick`, then run:
 
@@ -141,13 +121,7 @@ cd ~/Documents/Arduino/libraries
 git clone https://github.com/Seeed-Studio/Seeed_GFX.git
 ```
 
-The sketch includes `driver.h` with:
-
-```c
-#define BOARD_SCREEN_COMBO 520
-```
-
-That selects Seeed's E1001 display setup (`Setup520_Seeed_reTerminal_E1001`). If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check Seeed_GFX and `driver.h`.
+The included `driver.h` selects Seeed's E1001 display setup with `BOARD_SCREEN_COMBO 520`. If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check Seeed_GFX and `driver.h`.
 
 Seeed's reTerminal E Series Arduino cookbooks are useful references for the display and onboard peripherals:
 
@@ -174,7 +148,7 @@ Runtime settings are read from a plain text file at the root of the microSD card
 
 Use a FAT-formatted card and create `config.txt` in the root directory. Use one `KEY=VALUE` pair per line. Spaces around `=` are accepted; quoted values are not needed. Setting names are case-insensitive, as are documented option values such as `kts`, `metric`, `f`, `true`, and `on`. Blank lines and `#` comments are ignored.
 
-Minimal working example:
+Minimal working example, using Budapest coordinates:
 
 ```text
 SSID=your-wifi-name
@@ -200,7 +174,7 @@ Required fields:
 - `ALT`: observer altitude in meters
 - `TZ`: POSIX timezone string used for local timestamps and quiet hours
 
-Display and behavior fields:
+Optional behavior fields:
 
 - `SPEED`: `kph`, `mph`, or `kts`
 - `HEIGHT`: `ftfl` or `metric`
@@ -209,18 +183,21 @@ Display and behavior fields:
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
+- `LOCAL_ADSB_URL`: optional preferred readsb/tar1090 base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 
-Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. Wi-Fi and observer location must be valid for useful results. If the SD card or config file is missing, the device boots without Wi-Fi and retries after a short sleep.
+Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. If `LOCAL_ADSB_URL` is configured, the local feed is tried first; empty or failed local results fall back to `adsb.lol`. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
+
+The footer shows source labels such as `local feed`, `local feed + adsb.im`, or `local feed + retained route`.
 
 Example timezone values:
 
 - Budapest/Berlin/Central Europe: `CET-1CEST,M3.5.0,M10.5.0/3`
 - UTC: `UTC0`
 
-Example observer altitude:
+Observer location:
 
-- Use meters above sea level, not feet.
-- If unknown, use a reasonable local estimate; it mainly affects aircraft distance and overhead filtering.
+- Use meters above sea level for `ALT`.
+- `LAT`, `LON`, and `ALT` should describe the location used for nearest-aircraft selection, usually the display or feeder antenna location.
 
 ## Tests
 

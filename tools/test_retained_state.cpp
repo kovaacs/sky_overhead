@@ -55,7 +55,7 @@ int main() {
   retained.routeOk = false;
   retained.fromCode = "";
   retained.toCode = "";
-  applyRetainedRouteIfSame(retained, state);
+  expectTrue("retained route applied", applyRetainedRouteIfSame(retained, state));
   expectEqual("retained from", retained.fromCode, "MUC");
   expectEqual("retained to", retained.toCode, "BUD");
 
@@ -63,7 +63,7 @@ int main() {
   other.callsign = "OTHER";
   other.fromCode = "";
   other.toCode = "";
-  applyRetainedRouteIfSame(other, state);
+  expectTrue("other route not applied", !applyRetainedRouteIfSame(other, state));
   expectEqual("other route untouched", other.fromCode, "");
 
   expectEqual(

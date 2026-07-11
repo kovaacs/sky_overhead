@@ -28,6 +28,7 @@ static Plane samplePlane() {
   p.fromCode = "MUC";
   p.toCode = "BUD";
   p.typeCode = "A20N";
+  p.typeDesc = "Airbus A320neo";
   p.reg = "D-AINZ";
   p.altFt = 33000;
   p.gsKt = 421;
@@ -44,7 +45,8 @@ int main() {
   LeftColumnView live = makeLiveAircraftView(samplePlane(), HGT_FTFL, SPD_KTS, icons);
   expectEqual("live glyph", live.glyph, 1);
   expectEqual("live glyph size", live.glyphSize, 100);
-  expectEqual("live title", live.title, "A20N");
+  expectEqual("live title", live.title, "Airbus A320neo");
+  expectEqual("live title fallback", live.titleFallback, "A20N");
   expectEqual("live identity", live.line1, "DLH4JA (D-AINZ)");
   expectEqual("live airline", live.line2, "Lufthansa");
   expectEqual("live route from", live.routeFrom, "MUC");
@@ -68,6 +70,7 @@ int main() {
   // Retained aircraft data chooses saved metadata and route/motion fields.
   RetainedAircraftView retained;
   retained.lastAircraft = "A20N";
+  retained.lastType = "Airbus A320neo";
   retained.lastIdentity = "DLH4JA";
   retained.lastSeen = "Lufthansa";
   retained.lastAirline = "Lufthansa";
@@ -77,7 +80,8 @@ int main() {
   retained.lastMotion = "FL330";
   LeftColumnView retainedView = makeRetainedAircraftView(retained, icons);
   expectEqual("retained glyph", retainedView.glyph, 2);
-  expectEqual("retained title", retainedView.title, "A20N");
+  expectEqual("retained title", retainedView.title, "Airbus A320neo");
+  expectEqual("retained title fallback", retainedView.titleFallback, "A20N");
   expectEqual("retained identity", retainedView.line1, "DLH4JA");
   expectEqual("retained airline", retainedView.line2, "Lufthansa");
   expectEqual("retained route", retainedView.routeFrom + ">" + retainedView.routeTo, "MUC>BUD");

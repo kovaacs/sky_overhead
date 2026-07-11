@@ -51,11 +51,12 @@ static inline void rememberLastSeen(
   if (epoch > 0) state.lastEpoch = epoch;
 }
 
-static inline void applyRetainedRouteIfSame(Plane& p, const RetainedAircraftState& state) {
-  if (p.routeOk || !textHasLength(state.lastRouteKey)) return;
-  if (routeKey(p) != state.lastRouteKey) return;
+static inline bool applyRetainedRouteIfSame(Plane& p, const RetainedAircraftState& state) {
+  if (p.routeOk || !textHasLength(state.lastRouteKey)) return false;
+  if (routeKey(p) != state.lastRouteKey) return false;
   p.fromCode = state.lastFrom;
   p.toCode = state.lastTo;
+  return textHasLength(p.fromCode) || textHasLength(p.toCode);
 }
 
 static inline String foundRenderSignature(const Plane& p, int lowBucket) {

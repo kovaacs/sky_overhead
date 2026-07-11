@@ -22,6 +22,7 @@ struct RuntimeConfig {
   String wifiSSID;
   String wifiPass;
   String tzInfo;
+  String localAdsbBaseUrl;
   double myLat = 0.0;
   double myLon = 0.0;
   double myAltM = 0.0;
@@ -129,6 +130,31 @@ static inline bool parseNightMode(const String& value, uint16_t& start, uint16_t
   return true;
 }
 
+static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
+  baseUrl = trimCopy(baseUrl);
+  if (!textHasLength(baseUrl)) return "";
+
+#if defined(ARDUINO)
+  if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+    baseUrl = "http://" + baseUrl;
+  }
+  while (baseUrl.endsWith("/")) baseUrl.remove(baseUrl.length() - 1);
+  if (baseUrl.endsWith("/data/aircraft.json")) return baseUrl;
+#else
+  if (baseUrl.rfind("http://", 0) != 0 && baseUrl.rfind("https://", 0) != 0) {
+    baseUrl = "http://" + baseUrl;
+  }
+  while (!baseUrl.empty() && baseUrl.back() == '/') baseUrl.pop_back();
+  const String suffix = "/data/aircraft.json";
+  if (baseUrl.size() >= suffix.size() && baseUrl.compare(baseUrl.size() - suffix.size(), suffix.size(), suffix) == 0) {
+    return baseUrl;
+  }
+#endif
+
+  baseUrl += "/data/aircraft.json";
+  return baseUrl;
+}
+
 static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, String key, String val) {
   key = trimCopy(key);
 #if defined(ARDUINO)
@@ -146,6 +172,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   else if (key == "LON")  runtime.myLon = stringToDouble(val);
   else if (key == "ALT")  runtime.myAltM = stringToDouble(val);
   else if (key == "TZ")   runtime.tzInfo = val;
+  else if (key == "LOCAL_ADSB_URL") runtime.localAdsbBaseUrl = val;
   else if (key == "SPEED") {
     String v = lowerValue(val);
     if      (v == "mph") cfg.speed = SPD_MPH;

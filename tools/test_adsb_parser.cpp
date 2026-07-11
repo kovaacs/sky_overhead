@@ -45,6 +45,33 @@ int main() {
   expectTrue("empty result resets reused output", parseOverheadAircraft(empty, 47.0, 19.0, 130.0, reused) == FETCH_EMPTY);
   expectTrue("reused output no longer found", !reused.found);
 
+  JsonDocument local;
+  deserializeJson(local, R"json({
+    "now": 1720000000,
+    "aircraft": [
+      {"hex":"OUT","flight":"OUT1","lat":47.40,"lon":19.40,"alt_baro":5000},
+      {"hex":"IN","flight":"IN1","lat":47.0003,"lon":19.0003,"alt_baro":6000}
+    ]
+  })json");
+
+  Plane localBest;
+  expectTrue("local aircraft array found", parseOverheadAircraft(local, 47.0, 19.0, 130.0, localBest, 30) == FETCH_FOUND);
+  expectEqual("local nearest hex", localBest.hex, "IN");
+
+  Plane tooFar;
+  expectTrue("radius excludes by ground distance", parseOverheadAircraft(local, 47.0, 19.0, 130.0, tooFar, 0.01) == FETCH_EMPTY);
+
+  JsonDocument highOverhead;
+  deserializeJson(highOverhead, R"json({
+    "aircraft": [
+      {"hex":"HIGH","flight":"HIGH1","lat":47.0,"lon":19.0,"alt_baro":41000}
+    ]
+  })json");
+
+  Plane high;
+  expectTrue("ground radius includes high overhead aircraft", parseOverheadAircraft(highOverhead, 47.0, 19.0, 130.0, high, 1) == FETCH_FOUND);
+  expectEqual("high overhead selected", high.hex, "HIGH");
+
   std::cout << "adsb parser tests passed\n";
   return 0;
 }

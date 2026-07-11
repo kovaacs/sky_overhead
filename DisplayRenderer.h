@@ -99,10 +99,34 @@ static inline void drawFrameHeader(int batt) {
   batteryGlyph(ui::BATT_X, ui::BATT_Y, batt);
 }
 
-static inline void drawFrameFooter(const String& refreshedText) {
+static inline void drawFrameFooter(const String& refreshedText, const String& sourceText = "") {
   epaper.setFreeFont(&FreeSansBold12pt7b);
   epaper.setTextDatum(MC_DATUM);
-  epaper.drawString("Last refreshed " + refreshedText, ui::SCREEN_W / 2, ui::FOOTER_Y);
+  String refreshed = "Last refreshed " + refreshedText;
+  if (!textHasLength(sourceText)) {
+    epaper.drawString(fit(refreshed, ui::SCREEN_W - ui::MARGIN * 2), ui::SCREEN_W / 2, ui::FOOTER_Y);
+    epaper.setTextDatum(TL_DATUM);
+    return;
+  }
+
+  const int maxW = ui::SCREEN_W - ui::MARGIN * 2;
+  const int sepW = 24;
+  int refreshedW = epaper.textWidth(refreshed);
+  String source = fit(sourceText, maxW - refreshedW - sepW);
+  int sourceW = epaper.textWidth(source);
+  int totalW = refreshedW + sepW + sourceW;
+  if (totalW > maxW) {
+    refreshed = fit(refreshed, maxW - sepW - sourceW);
+    refreshedW = epaper.textWidth(refreshed);
+    totalW = refreshedW + sepW + sourceW;
+  }
+
+  int x = ui::SCREEN_W / 2 - totalW / 2;
+  epaper.drawString(refreshed, x + refreshedW / 2, ui::FOOTER_Y);
+  drawIconCentered(icon::DOT, x + refreshedW + sepW / 2, ui::FOOTER_Y, icon::DOT_SIZE);
+  epaper.setFreeFont(&FreeSansBold12pt7b);
+  epaper.setTextDatum(MC_DATUM);
+  epaper.drawString(source, x + refreshedW + sepW + sourceW / 2, ui::FOOTER_Y);
   epaper.setTextDatum(TL_DATUM);
 }
 
@@ -138,6 +162,16 @@ static inline void drawLeftText(int cx, int y, const String& text, const GFXfont
   epaper.setFreeFont(font);
   epaper.setTextDatum(MC_DATUM);
   epaper.drawString(fit(text, ui::LEFT_TEXT_W), cx, y);
+}
+
+static inline void drawLeftTitle(int cx, int y, const LeftColumnView& v) {
+  epaper.setFreeFont(&FreeSansBold24pt7b);
+  epaper.setTextDatum(MC_DATUM);
+  String title = v.title;
+  if (textHasLength(v.titleFallback) && epaper.textWidth(title) > ui::LEFT_TEXT_W) {
+    title = v.titleFallback;
+  }
+  epaper.drawString(fit(title, ui::LEFT_TEXT_W), cx, y);
 }
 
 static inline void drawPositionText(int cx, int y, const String& text) {
@@ -218,7 +252,7 @@ static inline void drawLeftColumn(LeftColumnView v) {
   drawIconCentered(v.glyph, cx, y + v.glyphSize / 2, v.glyphSize);
   y += v.glyphSize + 18;
 
-  drawLeftText(cx, y + 21, v.title, &FreeSansBold24pt7b);
+  drawLeftTitle(cx, y + 21, v);
   y += 42;
 
   if (v.line1.length()) {
@@ -268,7 +302,8 @@ static inline void drawLive(
   HeightUnit height,
   SpeedUnit speed,
   const RetainedAircraftView& retained,
-  const String& refreshedText
+  const String& refreshedText,
+  const String& sourceText = ""
 ) {
   epaper.fillScreen(TFT_WHITE);
   epaper.setTextDatum(TL_DATUM);
@@ -280,5 +315,5 @@ static inline void drawLive(
 
   drawClimatePanel(clim, tempUnit);
 
-  drawFrameFooter(refreshedText);
+  drawFrameFooter(refreshedText, sourceText);
 }

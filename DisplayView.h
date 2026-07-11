@@ -17,6 +17,7 @@ struct LeftColumnView {
   char glyph = 0;
   uint8_t glyphSize = 0;
   String title;
+  String titleFallback;
   String routeFrom;
   String routeTo;
   String line1;
@@ -62,7 +63,8 @@ static inline LeftColumnView makeLiveAircraftView(
   LeftColumnView v;
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
-  v.title = aircraftLabel(p);
+  v.titleFallback = aircraftLabel(p);
+  v.title = textHasLength(p.typeDesc) ? p.typeDesc : v.titleFallback;
   v.routeFrom = p.fromCode;
   v.routeTo = p.toCode;
   v.line1 = aircraftIdentity(p);
@@ -93,7 +95,8 @@ static inline LeftColumnView makeRetainedAircraftView(
   const bool helicopter = isHelicopterCategory(retained.lastCategory.c_str());
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
-  v.title = textHasLength(retained.lastAircraft) ? retained.lastAircraft : retained.lastType;
+  v.titleFallback = retained.lastAircraft;
+  v.title = textHasLength(retained.lastType) ? retained.lastType : retained.lastAircraft;
   if (!textHasLength(v.title)) v.title = "Aircraft";
   v.line1 = textHasLength(retained.lastIdentity) ? retained.lastIdentity : retained.lastSeen;
   v.line2 = retained.lastAirline;

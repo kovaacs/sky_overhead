@@ -68,12 +68,18 @@ int main() {
   applyConfigValue(cfg, runtime, "LON", "19.1");
   applyConfigValue(cfg, runtime, "ALT", "130");
   applyConfigValue(cfg, runtime, "TZ", "CET-1CEST");
+  applyConfigValue(cfg, runtime, "LOCAL_ADSB_URL", "http://adsb-feeder.local:8080");
   expectEqual("ssid", runtime.wifiSSID, "wifi");
   expectEqual("pass", runtime.wifiPass, "secret");
   expectEqual("lat", (int)(runtime.myLat * 10), 475);
   expectEqual("lon", (int)(runtime.myLon * 10), 191);
   expectEqual("alt", (int)runtime.myAltM, 130);
   expectEqual("tz", runtime.tzInfo, "CET-1CEST");
+  expectEqual("local adsb base url", runtime.localAdsbBaseUrl, "http://adsb-feeder.local:8080");
+  expectEqual("local adsb url from base", buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl), "http://adsb-feeder.local:8080/data/aircraft.json");
+  expectEqual("local adsb url trims slash", buildLocalAdsbAircraftUrl("http://adsb-feeder.local:8080/"), "http://adsb-feeder.local:8080/data/aircraft.json");
+  expectEqual("local adsb url adds scheme", buildLocalAdsbAircraftUrl("adsb-feeder.local:8080"), "http://adsb-feeder.local:8080/data/aircraft.json");
+  expectEqual("local adsb url keeps full url", buildLocalAdsbAircraftUrl("http://adsb-feeder.local:8080/data/aircraft.json"), "http://adsb-feeder.local:8080/data/aircraft.json");
 
   // Full config-file lines should parse like SD card input, including
   // whitespace around the separator and case-insensitive setting names.

@@ -28,11 +28,15 @@ static inline FetchResult parseOverheadAircraft(
   double observerLat,
   double observerLon,
   double observerAltM,
-  Plane& best
+  Plane& best,
+  double maxGroundKm = 0
 ) {
   best = Plane();
   double bestSlant = 1e9;
-  for (JsonObjectConst a : doc["ac"].as<JsonArrayConst>()) {
+  JsonArrayConst aircraft = doc["ac"].as<JsonArrayConst>();
+  if (aircraft.isNull()) aircraft = doc["aircraft"].as<JsonArrayConst>();
+
+  for (JsonObjectConst a : aircraft) {
     if (a["lat"].isNull() || a["lon"].isNull()) continue;
     double altFt = altFeet(a["alt_geom"]);
     if (altFt < 0) altFt = altFeet(a["alt_baro"]);
@@ -42,6 +46,7 @@ static inline FetchResult parseOverheadAircraft(
     double groundKm = haversineKm(observerLat, observerLon, lat, lon);
     double heightKm = (altFt * 0.3048 - observerAltM) / 1000.0;
     double slantKm  = sqrt(groundKm * groundKm + heightKm * heightKm);
+    if (maxGroundKm > 0 && groundKm > maxGroundKm) continue;
     if (slantKm >= bestSlant) continue;
 
     bestSlant = slantKm;

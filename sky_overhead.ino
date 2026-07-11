@@ -8,7 +8,8 @@
  * on /config.txt on the SD card.
  *
  * Data (both keyless):
- *   adsb.lol   — live position, aircraft type, registration
+ *   local ADS-B feeder — preferred live position source when LOCAL_ADSB_URL is configured
+ *   adsb.lol   — public live position fallback
  *   adsb.im    — route lookup using callsign + live position
  *
  * Build settings:
@@ -35,6 +36,7 @@
 #include <SPI.h>
 
 #include "AdsbParser.h"
+#include "AdsbFallback.h"
 #include "Aircraft.h"
 #include "Climate.h"
 #include "ClimateSensor.h"
@@ -78,7 +80,7 @@ namespace pin {
 namespace timing {
   constexpr uint32_t RETRY_SECONDS  = 45;          // after a failed fetch or no-clock sleep
   constexpr uint32_t WIFI_TIMEOUT   = 20000;       // connect attempt (ms)
-  constexpr uint32_t HTTP_TIMEOUT   = 8000;      // per request (ms)
+  constexpr uint32_t HTTP_TIMEOUT   = 10000;     // per request (ms)
   constexpr int      GHOST_CLEAN_EVERY = 20;     // full white flush every N redraws
 }
 
@@ -283,10 +285,14 @@ static bool connectWiFi() {
 // One place for the HTTPS-GET-then-parse-JSON dance. Pass a filter to keep
 // only the fields you need (smaller, faster parse). Returns true on 200 + parse.
 static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
+  WiFiClient plainClient;
   WiFiClientSecure client;
   client.setInsecure();                          // no cert pinning (hobby tradeoff)
   HTTPClient http;
-  if (!http.begin(client, url)) {
+  bool began = url.startsWith("https://")
+      ? http.begin(client, url)
+      : http.begin(plainClient, url);
+  if (!began) {
     LOG("[http] begin failed\n");
     return false;
   }
@@ -341,25 +347,56 @@ static bool httpPostJson(const String& url, const String& body, JsonDocument& do
   return true;
 }
 
-// adsb.lol: pick the nearest aircraft in 3D (minimum slant distance).
-static FetchResult fetchOverhead(Plane& best) {
+static JsonDocument aircraftFilter() {
+  JsonDocument filter;
+  for (const char* arrayName : {"ac", "aircraft"}) {
+    JsonObject f = filter[arrayName].add<JsonObject>();
+    for (const char* k : {"hex", "flight", "lat", "lon", "alt_baro", "alt_geom", "category", "t", "desc", "r", "gs", "baro_rate"})
+      f[k] = true;
+  }
+  return filter;
+}
+
+// adsb.lol: public aircraft fallback.
+static FetchResult fetchPublicOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
   char url[160];
   snprintf(url, sizeof(url), "https://%s/v2/point/%.5f/%.5f/%d",
            API_HOST, runtime.myLat, runtime.myLon, radiusNm);
 
-  JsonDocument filter;
-  JsonObject f = filter["ac"].add<JsonObject>();
-  for (const char* k : {"hex", "flight", "lat", "lon", "alt_baro", "alt_geom", "category", "t", "desc", "r", "gs", "baro_rate"})
-    f[k] = true;
-
+  JsonDocument filter = aircraftFilter();
   JsonDocument doc;
   if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
 
   FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best);
-  LOG("[adsb] %s @ %.1f km (3D)\n",
+  LOG("[adsb] public %s @ %.1f km (3D)\n",
       best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
   return result;
+}
+
+static FetchResult fetchLocalOverhead(Plane& best) {
+  String url = buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl);
+  if (!url.length()) return FETCH_ERROR;
+
+  JsonDocument filter = aircraftFilter();
+  JsonDocument doc;
+  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
+
+  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
+  LOG("[adsb] local %s @ %.1f km (3D)\n",
+      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
+  return result;
+}
+
+static FetchResult fetchOverhead(Plane& best, String& source) {
+  return fetchWithFallbackSource(
+    best,
+    [](Plane& out) { return fetchLocalOverhead(out); },
+    "local feed",
+    [](Plane& out) { return fetchPublicOverhead(out); },
+    "adsb.lol",
+    source
+  );
 }
 
 // tar1090 routeset: route lookup by callsign plus live aircraft position.
@@ -543,16 +580,21 @@ void setup() {
   }
 
   Plane p;
-  FetchResult fetchResult = fetchOverhead(p);
+  String aircraftSource;
+  FetchResult fetchResult = fetchOverhead(p, aircraftSource);
   if (fetchResult == FETCH_ERROR) {
     goSleep(timing::RETRY_SECONDS);
   }
 
   bool got = fetchResult == FETCH_FOUND;
+  bool routeSourceUsed = false;
+  bool retainedRouteUsed = false;
   if (got) {
     fetchRoute(p);
-    applyRetainedRouteIfSame(p, retainedStateFromRtc());
+    routeSourceUsed = p.routeOk;
+    retainedRouteUsed = applyRetainedRouteIfSame(p, retainedStateFromRtc());
   }
+  String sourceText = dataSourceText(aircraftSource, routeSourceUsed, retainedRouteUsed);
 
   if (got) {                                       // remember for the empty-sky screen
     rememberLastSeenRtc(p);
@@ -566,13 +608,15 @@ void setup() {
   int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
   String sig = got ? foundRenderSignature(p, lowBucket)
                    : emptyRenderSignature(retainedStateFromRtc(), lowBucket);
+  sig += "|S|";
+  sig += sourceText;
 
   if (sig != String(rtcSig)) {
     if (rtcRedraws > 0 && rtcRedraws % timing::GHOST_CLEAN_EVERY == 0) {
       epaper.fillScreen(TFT_WHITE);
       epaper.update();                             // clear accumulated ghosting
     }
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm());
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm(), sourceText);
     epaper.update();
     rtcRedraws++;
     sig.toCharArray(rtcSig, sizeof(rtcSig));
