@@ -22,29 +22,15 @@ fi
 
 run_test() {
   src="$1"
-  out="$2"
+  name="$(basename "$src" .cpp)"
+  out=".build/tests/$name"
+
   c++ -std=c++17 -Wall -Wextra -Werror -I. -I"$ARDUINO_JSON_INC" "$src" -o "$out"
   "$out"
 }
 
-run_test tools/test_left_column_cascade.cpp /tmp/sky_overhead_left_column_tests
+mkdir -p .build/tests
 
-run_test tools/test_climate_format.cpp /tmp/sky_overhead_climate_format_tests
-
-run_test tools/test_climate_sensor.cpp /tmp/sky_overhead_climate_sensor_tests
-
-run_test tools/test_aircraft.cpp /tmp/sky_overhead_aircraft_tests
-
-run_test tools/test_display_view.cpp /tmp/sky_overhead_display_view_tests
-
-run_test tools/test_config.cpp /tmp/sky_overhead_config_tests
-
-run_test tools/test_time_rules.cpp /tmp/sky_overhead_time_rule_tests
-
-run_test tools/test_retained_state.cpp /tmp/sky_overhead_retained_state_tests
-
-run_test tools/test_json_helpers.cpp /tmp/sky_overhead_json_helpers_tests
-
-run_test tools/test_adsb_parser.cpp /tmp/sky_overhead_adsb_parser_tests
-
-run_test tools/test_route_parser.cpp /tmp/sky_overhead_route_parser_tests
+for src in tools/test_*.cpp; do
+  run_test "$src"
+done
