@@ -17,10 +17,10 @@ It is built to behave like a quiet wall appliance: wake, fetch, redraw only when
 
 ## Data Sources
 
-The sketch can prefer a local ADS-B feeder and fall back to keyless public APIs:
+The sketch uses keyless ADS-B sources:
 
-- local readsb/tar1090 `aircraft.json` via `LOCAL_ADSB_URL` for live aircraft position, aircraft type, and registration
-- `adsb.lol` as the public live-aircraft fallback
+- `adsb.lol` as the primary live-aircraft source
+- optional local readsb/tar1090 `aircraft.json` via `LOCAL_ADSB_URL` when `adsb.lol` errors
 - `adsb.im` for route lookup by callsign plus live aircraft position
 
 ## Runtime Lifecycle
@@ -41,14 +41,19 @@ Connect Wi-Fi and sync time
   v
 Fetch aircraft
   |
-  +-- local feed configured -> try local feed first
+  +-- try adsb.lol
+  |      |
+  |      +-- found aircraft -> use adsb.lol
+  |      +-- empty          -> show empty sky
+  |      +-- error          -> try local feed if configured
+  |
+  +-- local feed after adsb.lol error
   |      |
   |      +-- found aircraft -> use local feed
-  |      +-- empty/error    -> try adsb.lol
+  |      +-- empty          -> show empty sky
+  |      +-- error          -> keep screen, sleep briefly, retry from adsb.lol
   |
-  +-- no local feed -> try adsb.lol
-  |
-  +-- all aircraft fetches failed -> keep screen, retry soon
+  +-- no local feed after adsb.lol error -> keep screen, sleep briefly, retry from adsb.lol
   |
   v
 Fetch route from adsb.im when an aircraft was found
@@ -183,11 +188,11 @@ Optional behavior fields:
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
-- `LOCAL_ADSB_URL`: optional preferred readsb/tar1090 base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
+- `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 
-Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. If `LOCAL_ADSB_URL` is configured, the local feed is tried first; empty or failed local results fall back to `adsb.lol`. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
+Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 
-The footer shows source labels such as `local feed`, `local feed + adsb.im`, or `local feed + retained route`.
+The footer shows source labels such as `adsb.lol`, `local feed`, or `local feed + retained route`.
 
 Example timezone values:
 

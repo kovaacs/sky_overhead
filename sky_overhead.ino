@@ -8,8 +8,8 @@
  * on /config.txt on the SD card.
  *
  * Data (both keyless):
- *   local ADS-B feeder — preferred live position source when LOCAL_ADSB_URL is configured
- *   adsb.lol   — public live position fallback
+ *   adsb.lol   — primary live position source
+ *   local ADS-B feeder — live position fallback when LOCAL_ADSB_URL is configured
  *   adsb.im    — route lookup using callsign + live position
  *
  * Build settings:
@@ -351,13 +351,13 @@ static JsonDocument aircraftFilter() {
   JsonDocument filter;
   for (const char* arrayName : {"ac", "aircraft"}) {
     JsonObject f = filter[arrayName].add<JsonObject>();
-    for (const char* k : {"hex", "flight", "lat", "lon", "alt_baro", "alt_geom", "category", "t", "desc", "r", "gs", "baro_rate"})
+    for (const char* k : {"hex", "flight", "lat", "lon", "alt_baro", "alt_geom", "category", "t", "desc", "r", "gs", "baro_rate", "seen_pos", "seen"})
       f[k] = true;
   }
   return filter;
 }
 
-// adsb.lol: public aircraft fallback.
+// adsb.lol: primary public aircraft source.
 static FetchResult fetchPublicOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
   char url[160];
@@ -389,12 +389,10 @@ static FetchResult fetchLocalOverhead(Plane& best) {
 }
 
 static FetchResult fetchOverhead(Plane& best, String& source) {
-  return fetchWithFallbackSource(
+  return fetchPublicThenLocalSource(
     best,
-    [](Plane& out) { return fetchLocalOverhead(out); },
-    "local feed",
     [](Plane& out) { return fetchPublicOverhead(out); },
-    "adsb.lol",
+    [](Plane& out) { return fetchLocalOverhead(out); },
     source
   );
 }

@@ -28,6 +28,7 @@ static inline FetchResult fetchWithFallbackSource(
     return result;
   }
   bool hasPrimaryNonError = result != FETCH_ERROR;
+  Plane primaryBest = best;
 
   FetchResult fallbackResult = fallback(best);
   if (fallbackResult != FETCH_ERROR) {
@@ -35,7 +36,30 @@ static inline FetchResult fetchWithFallbackSource(
     return fallbackResult;
   }
   if (hasPrimaryNonError) {
+    best = primaryBest;
     source = primarySource;
+  }
+  return result;
+}
+
+template <typename PublicFetcher, typename LocalFetcher>
+static inline FetchResult fetchPublicThenLocalSource(
+  Plane& best,
+  PublicFetcher&& publicAdsb,
+  LocalFetcher&& local,
+  String& source
+) {
+  source = "";
+  FetchResult result = publicAdsb(best);
+  if (result != FETCH_ERROR) {
+    source = "adsb.lol";
+    return result;
+  }
+
+  FetchResult localResult = local(best);
+  if (localResult != FETCH_ERROR) {
+    source = "local feed";
+    return localResult;
   }
   return result;
 }

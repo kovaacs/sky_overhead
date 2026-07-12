@@ -72,6 +72,18 @@ int main() {
   expectTrue("ground radius includes high overhead aircraft", parseOverheadAircraft(highOverhead, 47.0, 19.0, 130.0, high, 1) == FETCH_FOUND);
   expectEqual("high overhead selected", high.hex, "HIGH");
 
+  JsonDocument stale;
+  deserializeJson(stale, R"json({
+    "aircraft": [
+      {"hex":"STALE","flight":"OLD1","lat":47.0,"lon":19.0,"alt_baro":4000,"seen_pos":900},
+      {"hex":"FRESH","flight":"NEW1","lat":47.001,"lon":19.001,"alt_baro":5000,"seen_pos":5}
+    ]
+  })json");
+
+  Plane fresh;
+  expectTrue("stale local positions ignored", parseOverheadAircraft(stale, 47.0, 19.0, 130.0, fresh, 30) == FETCH_FOUND);
+  expectEqual("fresh aircraft selected over stale closer aircraft", fresh.hex, "FRESH");
+
   std::cout << "adsb parser tests passed\n";
   return 0;
 }

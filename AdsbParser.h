@@ -13,6 +13,8 @@ enum FetchResult {
   FETCH_FOUND
 };
 
+constexpr double DEFAULT_MAX_POSITION_AGE_SEC = 120.0;
+
 static inline double toRad(double d) { return d * M_PI / 180.0; }
 
 static inline double haversineKm(double lat1, double lon1, double lat2, double lon2) {
@@ -23,13 +25,23 @@ static inline double haversineKm(double lat1, double lon1, double lat2, double l
   return R * 2 * atan2(sqrt(h), sqrt(1 - h));
 }
 
+static inline bool stalePosition(JsonObjectConst aircraft, double maxPositionAgeSec) {
+  if (maxPositionAgeSec <= 0) return false;
+  JsonVariantConst seenPos = aircraft["seen_pos"];
+  if (!seenPos.isNull()) return seenPos.as<double>() > maxPositionAgeSec;
+  JsonVariantConst seen = aircraft["seen"];
+  if (!seen.isNull()) return seen.as<double>() > maxPositionAgeSec;
+  return false;
+}
+
 static inline FetchResult parseOverheadAircraft(
   const JsonDocument& doc,
   double observerLat,
   double observerLon,
   double observerAltM,
   Plane& best,
-  double maxGroundKm = 0
+  double maxGroundKm = 0,
+  double maxPositionAgeSec = DEFAULT_MAX_POSITION_AGE_SEC
 ) {
   best = Plane();
   double bestSlant = 1e9;
@@ -38,6 +50,7 @@ static inline FetchResult parseOverheadAircraft(
 
   for (JsonObjectConst a : aircraft) {
     if (a["lat"].isNull() || a["lon"].isNull()) continue;
+    if (stalePosition(a, maxPositionAgeSec)) continue;
     double altFt = altFeet(a["alt_geom"]);
     if (altFt < 0) altFt = altFeet(a["alt_baro"]);
     if (altFt < 0) continue;
