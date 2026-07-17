@@ -206,8 +206,8 @@ int main() {
   }
 
   expectTrue("source aircraft only", dataSourceText("local feed", false) == "local feed");
-  expectTrue("source with route", dataSourceText("local feed", true) == "local feed + adsb.im");
-  expectTrue("source with retained route", dataSourceText("local feed", false, true) == "local feed + retained route");
+  expectTrue("source with route", dataSourceText("local feed", true) == "local feed & adsb.im");
+  expectTrue("source with retained route", dataSourceText("local feed", false, true) == "local feed & retained route");
   expectTrue("route only source", dataSourceText("", true) == "adsb.im");
 
   std::cout << "adsb fallback tests passed\n";

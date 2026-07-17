@@ -18,12 +18,14 @@ struct RetainedAircraftState {
   String lastType;
   String lastReg;
   String lastMotion;
+  String lastSource;
   long lastEpoch = 0;
 };
 
 static inline void rememberLastSeen(
   RetainedAircraftState& state,
   const Plane& p,
+  const String& source,
   HeightUnit height,
   SpeedUnit speed,
   long epoch
@@ -48,7 +50,17 @@ static inline void rememberLastSeen(
   state.lastType = p.typeDesc;
   state.lastReg = p.reg;
   state.lastMotion = motionText(p, height, speed);
+  state.lastSource = source;
   if (epoch > 0) state.lastEpoch = epoch;
+}
+
+static inline String displaySourceForResult(
+  bool found,
+  const String& currentSource,
+  const RetainedAircraftState& retained
+) {
+  if (!found && textHasLength(retained.lastSource)) return retained.lastSource;
+  return currentSource;
 }
 
 static inline bool applyRetainedRouteIfSame(Plane& p, const RetainedAircraftState& state) {

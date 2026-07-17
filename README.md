@@ -77,10 +77,10 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Left column: active aircraft, or retained last-seen aircraft when nothing current is found.
 - Right column: indoor temperature and humidity.
 - Quiet hours: moon-icon sleep screen while aircraft checks are paused.
-- Footer: local `Last refreshed` time and data source, separated by a dot glyph.
+- Footer: local refresh time, a dot glyph, and the sources for the displayed snapshot, for example `Last refreshed: 14:32 · Source: adsb.lol & adsb.im`.
 - Primary aircraft label: aircraft description such as `AIRBUS A-320neo` when it fits, otherwise the type code; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
-- Detail row: altitude, vertical trend, and speed, for example `FL132 | climbing | 307 kts`.
+- Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
 - Unchanged visible state skips the e-paper refresh; every 20 redraws, a full white refresh reduces accumulated ghosting.
 
@@ -192,7 +192,7 @@ Optional behavior fields:
 
 Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 
-The footer shows source labels such as `adsb.lol`, `local feed`, or `local feed + retained route`.
+The footer shows source labels such as `adsb.lol`, `local feed`, or `local feed & retained route`.
 
 Example timezone values:
 

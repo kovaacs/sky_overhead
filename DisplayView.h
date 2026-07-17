@@ -37,6 +37,14 @@ struct RetainedAircraftView {
   String lastMotion;
 };
 
+static inline String frameFooterRefreshedText(const String& refreshedText) {
+  return "Last refreshed: " + refreshedText;
+}
+
+static inline String frameFooterSourceText(const String& sourceText) {
+  return "Source: " + sourceText;
+}
+
 template <typename View, typename SameText>
 static inline void cascadeDuplicateLines(View& v, SameText sameText) {
   decltype(&v.title) lines[] = { &v.title, &v.line1, &v.line2, &v.position };

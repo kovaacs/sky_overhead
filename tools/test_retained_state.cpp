@@ -43,12 +43,13 @@ static Plane samplePlane() {
 int main() {
   RetainedAircraftState state;
   Plane p = samplePlane();
-  rememberLastSeen(state, p, HGT_FTFL, SPD_KTS, 1234);
+  rememberLastSeen(state, p, "adsb.lol & adsb.im", HGT_FTFL, SPD_KTS, 1234);
   expectEqual("last seen prefers airline", state.lastSeen, "Lufthansa");
   expectEqual("route key", state.lastRouteKey, "DLH4JA");
   expectEqual("route cities", state.lastCities, "Munich to Budapest");
   expectEqual("identity", state.lastIdentity, "DLH4JA (D-AINZ)");
-  expectEqual("motion", state.lastMotion, "FL330  ...  climbing  ...  421 kts");
+  expectEqual("motion", state.lastMotion, "FL330  ...  climb.  ...  421 kts");
+  expectEqual("source", state.lastSource, "adsb.lol & adsb.im");
   expectTrue("epoch stored", state.lastEpoch == 1234);
 
   Plane retained = samplePlane();
@@ -74,7 +75,12 @@ int main() {
   expectEqual(
     "empty signature",
     emptyRenderSignature(state, 0),
-    "E|0|Lufthansa|MUC|BUD|Munich to Budapest|A20N|DLH4JA (D-AINZ)|Lufthansa|A3|Airbus A320neo|D-AINZ|FL330  ...  climbing  ...  421 kts");
+    "E|0|Lufthansa|MUC|BUD|Munich to Budapest|A20N|DLH4JA (D-AINZ)|Lufthansa|A3|Airbus A320neo|D-AINZ|FL330  ...  climb.  ...  421 kts");
+
+  expectEqual("live display source", displaySourceForResult(true, "adsb.lol", state), "adsb.lol");
+  expectEqual("retained display source", displaySourceForResult(false, "adsb.lol", state), "adsb.lol & adsb.im");
+  state.lastSource = "";
+  expectEqual("clear sky source", displaySourceForResult(false, "adsb.lol", state), "adsb.lol");
 
   std::cout << "retained state tests passed\n";
   return 0;

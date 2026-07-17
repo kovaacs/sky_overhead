@@ -67,11 +67,11 @@ static inline FetchResult fetchPublicThenLocalSource(
 static inline String dataSourceText(const String& aircraftSource, bool routeSourceUsed, bool retainedRouteUsed = false) {
   String text = aircraftSource;
   if (routeSourceUsed) {
-    if (textHasLength(text)) text += " + ";
+    if (textHasLength(text)) text += " & ";
     text += "adsb.im";
   }
   if (retainedRouteUsed) {
-    if (textHasLength(text)) text += " + ";
+    if (textHasLength(text)) text += " & ";
     text += "retained route";
   }
   return text;

@@ -72,8 +72,8 @@ static inline String speedStr(double kt, SpeedUnit speed) {
 }
 
 static inline const char* trendWord(double fpm) {
-  if (fpm >  150) return "climbing";
-  if (fpm < -150) return "descending";
+  if (fpm >  150) return "climb.";
+  if (fpm < -150) return "desc.";
   return "level";
 }
 

@@ -102,7 +102,7 @@ static inline void drawFrameHeader(int batt) {
 static inline void drawFrameFooter(const String& refreshedText, const String& sourceText = "") {
   epaper.setFreeFont(&FreeSansBold12pt7b);
   epaper.setTextDatum(MC_DATUM);
-  String refreshed = "Last refreshed " + refreshedText;
+  String refreshed = frameFooterRefreshedText(refreshedText);
   if (!textHasLength(sourceText)) {
     epaper.drawString(fit(refreshed, ui::SCREEN_W - ui::MARGIN * 2), ui::SCREEN_W / 2, ui::FOOTER_Y);
     epaper.setTextDatum(TL_DATUM);
@@ -112,7 +112,7 @@ static inline void drawFrameFooter(const String& refreshedText, const String& so
   const int maxW = ui::SCREEN_W - ui::MARGIN * 2;
   const int sepW = 24;
   int refreshedW = epaper.textWidth(refreshed);
-  String source = fit(sourceText, maxW - refreshedW - sepW);
+  String source = fit(frameFooterSourceText(sourceText), maxW - refreshedW - sepW);
   int sourceW = epaper.textWidth(source);
   int totalW = refreshedW + sepW + sourceW;
   if (totalW > maxW) {

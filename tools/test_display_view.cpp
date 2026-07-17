@@ -39,6 +39,9 @@ static Plane samplePlane() {
 }
 
 int main() {
+  expectEqual("footer refresh text", frameFooterRefreshedText("14:32"), "Last refreshed: 14:32");
+  expectEqual("footer source text", frameFooterSourceText("adsb.lol & adsb.im"), "Source: adsb.lol & adsb.im");
+
   // Live aircraft data becomes a fully prepared left-column view; the renderer
   // should not need to know aircraft formatting rules.
   DisplayIconSet icons { 1, 100, 2, 200, 3, 120 };
@@ -51,7 +54,7 @@ int main() {
   expectEqual("live airline", live.line2, "Lufthansa");
   expectEqual("live route from", live.routeFrom, "MUC");
   expectEqual("live route to", live.routeTo, "BUD");
-  expectEqual("live motion", live.position, "FL330  ...  climbing  ...  421 kts");
+  expectEqual("live motion", live.position, "FL330  ...  climb.  ...  421 kts");
 
   // Helicopters keep the same text rules but select the helicopter icon.
   Plane heli = samplePlane();

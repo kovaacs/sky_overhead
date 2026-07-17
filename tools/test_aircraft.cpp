@@ -41,12 +41,12 @@ int main() {
   expectEqual("identity suppresses duplicate reg", aircraftIdentity(p), "DLH4JA");
 
   // Motion text preserves the visible separators used by the renderer.
-  expectEqual("motion text metric speed", motionText(p, HGT_FTFL, SPD_KPH), "FL330  ...  climbing  ...  780 km/h");
-  expectEqual("motion text knots", motionText(p, HGT_FTFL, SPD_KTS), "FL330  ...  climbing  ...  421 kts");
-  expectEqual("motion text metric altitude", motionText(p, HGT_METRIC, SPD_MPH), "10058 m  ...  climbing  ...  485 mph");
+  expectEqual("motion text metric speed", motionText(p, HGT_FTFL, SPD_KPH), "FL330  ...  climb.  ...  780 km/h");
+  expectEqual("motion text knots", motionText(p, HGT_FTFL, SPD_KTS), "FL330  ...  climb.  ...  421 kts");
+  expectEqual("motion text metric altitude", motionText(p, HGT_METRIC, SPD_MPH), "10058 m  ...  climb.  ...  485 mph");
 
   expectEqual("low altitude feet", altStr(8500, HGT_FTFL), "8500 ft");
-  expectEqual("descending trend", trendWord(-300), "descending");
+  expectEqual("descending trend", trendWord(-300), "desc.");
   expectEqual("level trend", trendWord(25), "level");
 
   // Route helpers support retained-route lookup and empty-sky city summaries.

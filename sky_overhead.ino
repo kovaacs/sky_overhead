@@ -141,6 +141,7 @@ RTC_DATA_ATTR char     rtcLastCategory[8] = ""; // ADS-B category for last icon 
 RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
 RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
+RTC_DATA_ATTR char     rtcLastSource[48] = ""; // sources for the retained aircraft view
 RTC_DATA_ATTR time_t   rtcLastEpoch    = 0;    // when it was last overhead
 RTC_DATA_ATTR uint16_t rtcRedraws      = 0;    // for periodic ghost-clean
 RTC_DATA_ATTR uint8_t  rtcDemoStep     = 0;    // rotates demo screens
@@ -455,6 +456,7 @@ static RetainedAircraftState retainedStateFromRtc() {
   state.lastType = String(rtcLastType);
   state.lastReg = String(rtcLastReg);
   state.lastMotion = String(rtcLastMotion);
+  state.lastSource = String(rtcLastSource);
   state.lastEpoch = rtcLastEpoch;
   return state;
 }
@@ -472,12 +474,13 @@ static void writeRetainedStateToRtc(const RetainedAircraftState& state) {
   state.lastType.toCharArray(rtcLastType, sizeof(rtcLastType));
   state.lastReg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
   state.lastMotion.toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
+  state.lastSource.toCharArray(rtcLastSource, sizeof(rtcLastSource));
   rtcLastEpoch = state.lastEpoch;
 }
 
-static void rememberLastSeenRtc(const Plane& p) {
+static void rememberLastSeenRtc(const Plane& p, const String& source = "") {
   RetainedAircraftState state = retainedStateFromRtc();
-  rememberLastSeen(state, p, cfg.height, cfg.speed, haveClock() ? time(nullptr) : 0);
+  rememberLastSeen(state, p, source, cfg.height, cfg.speed, haveClock() ? time(nullptr) : 0);
   writeRetainedStateToRtc(state);
 }
 
@@ -593,10 +596,12 @@ void setup() {
     retainedRouteUsed = applyRetainedRouteIfSame(p, retainedStateFromRtc());
   }
   String sourceText = dataSourceText(aircraftSource, routeSourceUsed, retainedRouteUsed);
+  RetainedAircraftState retainedState = retainedStateFromRtc();
 
   if (got) {                                       // remember for the empty-sky screen
-    rememberLastSeenRtc(p);
+    rememberLastSeenRtc(p, sourceText);
   }
+  sourceText = displaySourceForResult(got, sourceText, retainedState);
 
   int batt = batteryPct();
   Climate clim = readClimate();
