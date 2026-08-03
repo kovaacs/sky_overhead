@@ -130,7 +130,7 @@ The included `driver.h` selects Seeed's E1001 display setup with `BOARD_SCREEN_C
 
 Seeed's reTerminal E Series Arduino cookbooks are useful references for the display and onboard peripherals:
 
-- https://wiki.seeedstudio.com/reterminal_e10xx_with_arduino_display/
+- https://wiki.seeedstudio.com/reterminal_e10xx_with_arduino/
 - https://wiki.seeedstudio.com/reterminal_e10xx_with_arduino_peripherals/
 
 ## Board Options
@@ -204,6 +204,14 @@ Observer location:
 - Use meters above sea level for `ALT`.
 - `LAT`, `LON`, and `ALT` should describe the location used for nearest-aircraft selection, usually the display or feeder antenna location.
 
+## Data and Privacy
+
+Wi-Fi credentials and runtime settings stay on the microSD card; `config.txt` is ignored by Git to reduce the risk of publishing it accidentally. The firmware does not send the Wi-Fi password to any data provider.
+
+When the public data sources are enabled, the configured observer latitude and longitude are included in requests to `adsb.lol`. Aircraft position and callsign are sent to `adsb.im` for route lookup. Use the optional local ADS-B feed if you prefer to keep live-aircraft discovery on your network, noting that route lookup still uses `adsb.im`.
+
+HTTPS certificate verification is disabled in the current firmware to accommodate the embedded networking stack. Do not treat returned aircraft or route data as authenticated or safety-critical information.
+
 ## Tests
 
 Run the host-side unit suite before compiling or flashing:
@@ -247,23 +255,21 @@ arduino-cli board list
 
 Use the USB Serial Port, typically `/dev/cu.usbserial-*`; skip Bluetooth ports. If no USB serial port appears, press RESET. If upload still cannot connect, hold BOOT, tap RESET, release BOOT, then retry to force ROM bootloader mode.
 
-Upload with the detected `/dev/cu.*` port:
+Upload with the detected port, replacing `<PORT>` with the value shown by `arduino-cli board list`:
 
 ```bash
 arduino-cli upload \
   --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,UploadSpeed=460800,FlashSize=8M,PartitionScheme=default_8MB" \
-  --port /dev/cu.usbserial-10 \
+  --port <PORT> \
   .
 ```
-
-Replace `/dev/cu.usbserial-10` with the port shown on your machine.
 
 To compile and upload in one command:
 
 ```bash
 arduino-cli compile --upload \
   --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,UploadSpeed=460800,FlashSize=8M,PartitionScheme=default_8MB" \
-  --port /dev/cu.usbserial-10 \
+  --port <PORT> \
   .
 ```
 

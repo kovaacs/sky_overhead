@@ -1,2 +1,12 @@
 .DS_Store
 .build/
+.arduino-cli.yaml
+.arduino-sketchbook/
+.claude/
+
+# Runtime configuration can contain Wi-Fi credentials and observer location.
+config.txt
+secrets.h
+.env
+.env.*
+*.pem
