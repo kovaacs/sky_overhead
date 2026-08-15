@@ -76,6 +76,7 @@ int main() {
   expectEqual("alt", (int)runtime.myAltM, 130);
   expectEqual("tz", runtime.tzInfo, "CET-1CEST");
   expectEqual("local adsb base url", runtime.localAdsbBaseUrl, "http://adsb-feeder.local:8080");
+  expectTrue("complete runtime config valid", hasRequiredRuntimeConfig(runtime));
   expectEqual("local adsb url from base", buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl), "http://adsb-feeder.local:8080/data/aircraft.json");
   expectEqual("local adsb url trims slash", buildLocalAdsbAircraftUrl("http://adsb-feeder.local:8080/"), "http://adsb-feeder.local:8080/data/aircraft.json");
   expectEqual("local adsb url adds scheme", buildLocalAdsbAircraftUrl("adsb-feeder.local:8080"), "http://adsb-feeder.local:8080/data/aircraft.json");
@@ -98,6 +99,19 @@ int main() {
   expectTrue("comment ignored", !applyConfigLine(lineCfg, lineRuntime, " # SPEED=kts"));
   expectTrue("missing equals ignored", !applyConfigLine(lineCfg, lineRuntime, "SPEED kts"));
   expectEqual("ignored line preserves speed", lineCfg.speed, SPD_MPH);
+
+  RuntimeConfig invalidRuntime;
+  applyConfigValue(cfg, invalidRuntime, "SSID", "wifi");
+  applyConfigValue(cfg, invalidRuntime, "TZ", "UTC0");
+  applyConfigValue(cfg, invalidRuntime, "LAT", "47,5");
+  applyConfigValue(cfg, invalidRuntime, "LON", "181");
+  applyConfigValue(cfg, invalidRuntime, "ALT", "not-a-number");
+  expectTrue("malformed required values rejected", !hasRequiredRuntimeConfig(invalidRuntime));
+
+  applyConfigValue(cfg, invalidRuntime, "LAT", "0");
+  applyConfigValue(cfg, invalidRuntime, "LON", "0");
+  applyConfigValue(cfg, invalidRuntime, "ALT", "0");
+  expectTrue("valid zero coordinates accepted", hasRequiredRuntimeConfig(invalidRuntime));
 
   std::cout << "config tests passed\n";
   return 0;

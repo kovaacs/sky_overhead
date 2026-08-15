@@ -271,7 +271,10 @@ static void loadConfig() {
 
 // ============================ NETWORK ===============================
 static bool connectWiFi() {
-  if (!runtime.wifiSSID.length()) { LOG("[wifi] no SSID configured\n"); return false; }
+  if (!hasRequiredRuntimeConfig(runtime)) {
+    LOG("[config] require SSID, TZ, valid LAT/LON, and numeric ALT\n");
+    return false;
+  }
   WiFi.mode(WIFI_STA);
   WiFi.begin(runtime.wifiSSID.c_str(), runtime.wifiPass.c_str());
   uint32_t start = millis();

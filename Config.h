@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "Aircraft.h"
 #include "Climate.h"
@@ -26,6 +27,9 @@ struct RuntimeConfig {
   double myLat = 0.0;
   double myLon = 0.0;
   double myAltM = 0.0;
+  bool hasLat = false;
+  bool hasLon = false;
+  bool hasAlt = false;
 };
 
 static inline int clampInt(int value, int lo, int hi) {
@@ -73,6 +77,21 @@ static inline double stringToDouble(const String& s) {
 #else
   return std::atof(s.c_str());
 #endif
+}
+
+static inline bool parseDoubleStrict(const String& s, double& value) {
+  String text = trimCopy(s);
+  if (!textHasLength(text)) return false;
+  char* end = nullptr;
+  double parsed = strtod(text.c_str(), &end);
+  if (end == text.c_str() || *end != '\0' || !isfinite(parsed)) return false;
+  value = parsed;
+  return true;
+}
+
+static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
+  return textHasLength(runtime.wifiSSID) && textHasLength(runtime.tzInfo) &&
+         runtime.hasLat && runtime.hasLon && runtime.hasAlt;
 }
 
 static inline bool isDigitChar(char c) {
@@ -168,9 +187,21 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
 
   if      (key == "SSID") runtime.wifiSSID = val;
   else if (key == "PASS") runtime.wifiPass = val;
-  else if (key == "LAT")  runtime.myLat = stringToDouble(val);
-  else if (key == "LON")  runtime.myLon = stringToDouble(val);
-  else if (key == "ALT")  runtime.myAltM = stringToDouble(val);
+  else if (key == "LAT") {
+    double parsed = 0;
+    runtime.hasLat = parseDoubleStrict(val, parsed) && parsed >= -90.0 && parsed <= 90.0;
+    if (runtime.hasLat) runtime.myLat = parsed;
+  }
+  else if (key == "LON") {
+    double parsed = 0;
+    runtime.hasLon = parseDoubleStrict(val, parsed) && parsed >= -180.0 && parsed <= 180.0;
+    if (runtime.hasLon) runtime.myLon = parsed;
+  }
+  else if (key == "ALT") {
+    double parsed = 0;
+    runtime.hasAlt = parseDoubleStrict(val, parsed);
+    if (runtime.hasAlt) runtime.myAltM = parsed;
+  }
   else if (key == "TZ")   runtime.tzInfo = val;
   else if (key == "LOCAL_ADSB_URL") runtime.localAdsbBaseUrl = val;
   else if (key == "SPEED") {
