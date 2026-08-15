@@ -16,6 +16,7 @@ struct Settings {
   uint16_t nightStart = 0;
   uint16_t nightEnd = 0;
   uint16_t busy = 60;
+  uint32_t maxRefresh = 0;
   bool demo = false;
 };
 
@@ -222,6 +223,10 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
     }
   }
   else if (key == "BUSY") cfg.busy = (uint16_t)clampInt(stringToInt(val), 15, 600);
+  else if (key == "MAX_REFRESH") {
+    int seconds = stringToInt(val);
+    cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)clampInt(seconds, 60, 86400);
+  }
   else if (key == "DEMO") {
     String v = lowerValue(val);
     cfg.demo = (v == "1" || v == "true" || v == "on");

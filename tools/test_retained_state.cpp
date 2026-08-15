@@ -41,6 +41,11 @@ static Plane samplePlane() {
 }
 
 int main() {
+  expectTrue("periodic refresh disabled", !periodicRefreshDue(0, 1000, 100));
+  expectTrue("periodic refresh due without retained time", periodicRefreshDue(300, 1000, 0));
+  expectTrue("periodic refresh waits for interval", !periodicRefreshDue(300, 1000, 800));
+  expectTrue("periodic refresh due at interval", periodicRefreshDue(300, 1000, 700));
+
   RetainedAircraftState state;
   Plane p = samplePlane();
   rememberLastSeen(state, p, "adsb.lol & adsb.im", HGT_FTFL, SPD_KTS, 1234);
@@ -49,6 +54,7 @@ int main() {
   expectEqual("route cities", state.lastCities, "Munich to Budapest");
   expectEqual("identity", state.lastIdentity, "DLH4JA (D-AINZ)");
   expectEqual("motion", state.lastMotion, "FL330  ...  climb.  ...  421 kts");
+  expectEqual("retained motion reformats", retainedMotionText(state, HGT_METRIC, SPD_KPH), "10058 m  ...  climb.  ...  780 km/h");
   expectEqual("source", state.lastSource, "adsb.lol & adsb.im");
   expectTrue("epoch stored", state.lastEpoch == 1234);
 

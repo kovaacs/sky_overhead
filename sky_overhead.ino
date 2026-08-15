@@ -142,7 +142,13 @@ RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
 RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
 RTC_DATA_ATTR char     rtcLastSource[48] = ""; // sources for the retained aircraft view
+RTC_DATA_ATTR double   rtcLastAltFt = 0;
+RTC_DATA_ATTR double   rtcLastGsKt = 0;
+RTC_DATA_ATTR double   rtcLastVrateFpm = 0;
+RTC_DATA_ATTR bool     rtcLastHasGs = false;
+RTC_DATA_ATTR bool     rtcLastHasVrate = false;
 RTC_DATA_ATTR time_t   rtcLastEpoch    = 0;    // when it was last overhead
+RTC_DATA_ATTR time_t   rtcLastRefreshEpoch = 0; // last physical display update
 RTC_DATA_ATTR uint16_t rtcRedraws      = 0;    // for periodic ghost-clean
 RTC_DATA_ATTR uint8_t  rtcDemoStep     = 0;    // rotates demo screens
 
@@ -203,6 +209,10 @@ static uint32_t secsUntilMinuteOfDay(uint16_t minuteOfDay) {
 
 static bool isNightNow() {
   return isNightMinute(cfg.night, cfg.nightStart, cfg.nightEnd, curMinuteOfDay());
+}
+
+static time_t currentEpoch() {
+  return haveClock() ? time(nullptr) : 0;
 }
 
 // ============================ BATTERY ===============================
@@ -460,6 +470,11 @@ static RetainedAircraftState retainedStateFromRtc() {
   state.lastReg = String(rtcLastReg);
   state.lastMotion = String(rtcLastMotion);
   state.lastSource = String(rtcLastSource);
+  state.lastAltFt = rtcLastAltFt;
+  state.lastGsKt = rtcLastGsKt;
+  state.lastVrateFpm = rtcLastVrateFpm;
+  state.lastHasGs = rtcLastHasGs;
+  state.lastHasVrate = rtcLastHasVrate;
   state.lastEpoch = rtcLastEpoch;
   return state;
 }
@@ -478,6 +493,11 @@ static void writeRetainedStateToRtc(const RetainedAircraftState& state) {
   state.lastReg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
   state.lastMotion.toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
   state.lastSource.toCharArray(rtcLastSource, sizeof(rtcLastSource));
+  rtcLastAltFt = state.lastAltFt;
+  rtcLastGsKt = state.lastGsKt;
+  rtcLastVrateFpm = state.lastVrateFpm;
+  rtcLastHasGs = state.lastHasGs;
+  rtcLastHasVrate = state.lastHasVrate;
   rtcLastEpoch = state.lastEpoch;
 }
 
@@ -498,7 +518,7 @@ static RetainedAircraftView retainedAircraftView() {
   retained.lastAirline = state.lastAirline;
   retained.lastCategory = state.lastCategory;
   retained.lastType = state.lastType;
-  retained.lastMotion = state.lastMotion;
+  retained.lastMotion = retainedMotionText(state, cfg.height, cfg.speed);
   return retained;
 }
 
@@ -566,10 +586,12 @@ void setup() {
     int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
     char sig[32];
     snprintf(sig, sizeof(sig), "N|%u|%d", cfg.nightEnd, lowBucket);
-    if (strcmp(sig, rtcSig) != 0) {
+    time_t now = currentEpoch();
+    if (strcmp(sig, rtcSig) != 0 || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
       drawNightSleep(cfg.nightEnd, batt, hhmm());
       epaper.update();
       rtcRedraws++;
+      rtcLastRefreshEpoch = now;
       strncpy(rtcSig, sig, sizeof(rtcSig));
       LOG("[draw] night screen (%s)\n", sig);
     } else {
@@ -616,8 +638,15 @@ void setup() {
                    : emptyRenderSignature(retainedStateFromRtc(), lowBucket);
   sig += "|S|";
   sig += sourceText;
+  sig += "|U|";
+  sig += String((int)cfg.temp);
+  sig += "|";
+  sig += String((int)cfg.height);
+  sig += "|";
+  sig += String((int)cfg.speed);
 
-  if (sig != String(rtcSig)) {
+  time_t now = currentEpoch();
+  if (sig != String(rtcSig) || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
     if (rtcRedraws > 0 && rtcRedraws % timing::GHOST_CLEAN_EVERY == 0) {
       epaper.fillScreen(TFT_WHITE);
       epaper.update();                             // clear accumulated ghosting
@@ -625,6 +654,7 @@ void setup() {
     drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm(), sourceText);
     epaper.update();
     rtcRedraws++;
+    rtcLastRefreshEpoch = now;
     sig.toCharArray(rtcSig, sizeof(rtcSig));
     LOG("[draw] repainted (%s)\n", sig.c_str());
   } else {

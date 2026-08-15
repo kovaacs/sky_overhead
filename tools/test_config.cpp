@@ -37,6 +37,7 @@ int main() {
   applyConfigValue(cfg, runtime, "TEMP", "f");
   applyConfigValue(cfg, runtime, "RADIUS", "999");
   applyConfigValue(cfg, runtime, "BUSY", "2");
+  applyConfigValue(cfg, runtime, "MAX_REFRESH", "30");
   applyConfigValue(cfg, runtime, "DEMO", "on");
   applyConfigValue(cfg, runtime, "NIGHT_MODE", "22:30-06:45");
 
@@ -45,6 +46,7 @@ int main() {
   expectEqual("temp fahrenheit", cfg.temp, TEMP_F);
   expectEqual("radius constrained high", cfg.radius, 500);
   expectEqual("busy constrained low", cfg.busy, 15);
+  expectEqual("maximum refresh constrained low", cfg.maxRefresh, 60);
   expectTrue("demo true", cfg.demo);
   expectTrue("night true", cfg.night);
   expectEqual("night start", cfg.nightStart, 22 * 60 + 30);
@@ -52,8 +54,10 @@ int main() {
 
   applyConfigValue(cfg, runtime, "RADIUS", "0");
   applyConfigValue(cfg, runtime, "BUSY", "999");
+  applyConfigValue(cfg, runtime, "MAX_REFRESH", "0");
   expectEqual("radius constrained low", cfg.radius, 1);
   expectEqual("busy constrained high", cfg.busy, 600);
+  expectEqual("maximum refresh disabled", cfg.maxRefresh, 0);
 
   cfg.nightStart = 123;
   cfg.nightEnd = 456;

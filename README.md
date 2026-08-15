@@ -168,6 +168,7 @@ TEMP=c
 RADIUS=30
 NIGHT_MODE=23:00-07:00
 BUSY=60
+MAX_REFRESH=0
 DEMO=0
 ```
 
@@ -187,6 +188,7 @@ Optional behavior fields:
 - `RADIUS`: aircraft search radius in kilometers
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
+- `MAX_REFRESH`: maximum time in seconds between display updates; `0` disables time-based redraws, positive values are constrained to 60–86400
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 
