@@ -21,6 +21,7 @@ int main() {
   deserializeJson(doc, R"json({
     "ac": [
       {"hex":"GROUND","flight":"SKIP","lat":47.0,"lon":19.0,"alt_baro":"ground"},
+      {"hex":"GROUND-GEOM","flight":"SKIP2","lat":47.0,"lon":19.0,"alt_baro":"ground","alt_geom":430},
       {"hex":"FAR","flight":"FAR1","lat":47.20,"lon":19.20,"alt_geom":32000,"category":"A3","t":"A21N","desc":"Airbus A321neo","r":"D-AABC","gs":400,"baro_rate":-500},
       {"hex":"NEAR","flight":"NEAR1 ","lat":47.0005,"lon":19.0005,"alt_baro":12000,"category":"A7","t":"H60","desc":"","r":"N12345","gs":95,"baro_rate":0}
     ]

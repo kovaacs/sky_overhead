@@ -51,6 +51,8 @@ static inline FetchResult parseOverheadAircraft(
   for (JsonObjectConst a : aircraft) {
     if (a["lat"].isNull() || a["lon"].isNull()) continue;
     if (stalePosition(a, maxPositionAgeSec)) continue;
+    const char* baroState = a["alt_baro"].as<const char*>();
+    if (baroState && strcmp(baroState, "ground") == 0) continue;
     double altFt = altFeet(a["alt_geom"]);
     if (altFt < 0) altFt = altFeet(a["alt_baro"]);
     if (altFt < 0) continue;
