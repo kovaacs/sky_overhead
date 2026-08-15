@@ -204,7 +204,7 @@ static int curMinuteOfDay() {
 static uint32_t secsUntilMinuteOfDay(uint16_t minuteOfDay) {
   struct tm t;
   if (!getLocalTime(&t, 800)) return timing::RETRY_SECONDS;
-  return secondsUntilMinuteOfDay(minuteOfDay, t.tm_hour, t.tm_min, t.tm_sec);
+  return secondsUntilLocalMinuteOfDay(minuteOfDay, time(nullptr), t);
 }
 
 static bool isNightNow() {
