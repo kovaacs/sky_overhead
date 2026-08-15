@@ -7,6 +7,8 @@
 #include "Aircraft.h"
 #include "Climate.h"
 
+constexpr uint16_t MAX_RADIUS_KM = 463;
+
 struct Settings {
   SpeedUnit speed = SPD_KPH;
   HeightUnit height = HGT_FTFL;
@@ -213,7 +215,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "HEIGHT") cfg.height = (lowerValue(val) == "metric") ? HGT_METRIC : HGT_FTFL;
   else if (key == "TEMP") cfg.temp = (lowerValue(val) == "f") ? TEMP_F : TEMP_C;
-  else if (key == "RADIUS") cfg.radius = (uint16_t)clampInt(stringToInt(val), 1, 500);
+  else if (key == "RADIUS") cfg.radius = (uint16_t)clampInt(stringToInt(val), 1, MAX_RADIUS_KM);
   else if (key == "NIGHT_MODE") {
     uint16_t start = 0, end = 0;
     cfg.night = parseNightMode(val, start, end);

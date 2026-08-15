@@ -185,7 +185,7 @@ Optional behavior fields:
 - `SPEED`: `kph`, `mph`, or `kts`
 - `HEIGHT`: `ftfl` or `metric`
 - `TEMP`: `c` or `f`
-- `RADIUS`: aircraft search radius in kilometers
+- `RADIUS`: aircraft search radius in kilometers, constrained to 1–463 km by the public source's 250 NM limit
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds
 - `MAX_REFRESH`: maximum time in seconds between display updates; `0` disables time-based redraws, positive values are constrained to 60–86400

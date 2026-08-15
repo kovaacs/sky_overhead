@@ -382,7 +382,7 @@ static FetchResult fetchPublicOverhead(Plane& best) {
   JsonDocument doc;
   if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
 
-  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best);
+  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
   LOG("[adsb] public %s @ %.1f km (3D)\n",
       best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
   return result;

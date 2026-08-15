@@ -44,7 +44,7 @@ int main() {
   expectEqual("speed kts", cfg.speed, SPD_KTS);
   expectEqual("height metric", cfg.height, HGT_METRIC);
   expectEqual("temp fahrenheit", cfg.temp, TEMP_F);
-  expectEqual("radius constrained high", cfg.radius, 500);
+  expectEqual("radius constrained high", cfg.radius, MAX_RADIUS_KM);
   expectEqual("busy constrained low", cfg.busy, 15);
   expectEqual("maximum refresh constrained low", cfg.maxRefresh, 60);
   expectTrue("demo true", cfg.demo);
