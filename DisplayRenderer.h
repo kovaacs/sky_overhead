@@ -285,7 +285,7 @@ static inline void drawNightSleep(uint16_t wakeMinute, int batt, const String& r
   epaper.setFreeFont(&FreeSansBold24pt7b);
   epaper.drawString("Sleeping", ui::SLEEP_CX, ui::LEFT_TITLE_Y);
   epaper.setFreeFont(&FreeSans18pt7b);
-  epaper.drawString("Aircraft checks paused", ui::SLEEP_CX, ui::LEFT_SUBTITLE_Y);
+  epaper.drawString("Screen refresh paused", ui::SLEEP_CX, ui::LEFT_SUBTITLE_Y);
   char wake[32];
   snprintf(wake, sizeof(wake), "until %02u:%02u", wakeMinute / 60, wakeMinute % 60);
   epaper.setFreeFont(&FreeSans12pt7b);
