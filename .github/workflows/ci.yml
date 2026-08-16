@@ -54,6 +54,12 @@ jobs:
       - name: Compile firmware
         run: arduino-cli compile --output-dir .build/firmware .
 
+      - name: Validate release packaging
+        run: |
+          tools/package_release.sh v0.0.0 .build/firmware .build/release-test
+          cd .build/release-test
+          shasum -a 256 -c SHA256SUMS
+
       - name: Upload firmware
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

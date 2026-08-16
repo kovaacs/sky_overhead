@@ -1,6 +1,7 @@
 # Sky Overhead
 
 [![CI](https://github.com/kovaacs/sky_overhead/actions/workflows/ci.yml/badge.svg)](https://github.com/kovaacs/sky_overhead/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/kovaacs/sky_overhead)](https://github.com/kovaacs/sky_overhead/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
@@ -205,7 +206,9 @@ arduino-cli compile .
 
 ## Flash
 
-Connect the device over USB and find the serial port:
+To install a published release without compiling, download the merged binary and checksums from [GitHub Releases](https://github.com/kovaacs/sky_overhead/releases/latest). Follow [FLASHING.md](FLASHING.md) to verify the download, flash it with esptool, recover with BOOT/RESET if needed, and prepare the microSD card.
+
+To compile and upload from source, connect the device over USB and find the serial port:
 
 ```bash
 arduino-cli board list
