@@ -3,6 +3,8 @@ set -eu
 
 if [ -z "${ARDUINO_JSON_INC:-}" ]; then
   for candidate in \
+    "$PWD/.arduino-sketchbook/libraries/ArduinoJson/src" \
+    "$PWD/.arduino-sketchbook/libraries/ArduinoJson" \
     "$HOME/Documents/Arduino/libraries/ArduinoJson/src" \
     "$HOME/Documents/Arduino/libraries/ArduinoJson" \
     "$HOME/Arduino/libraries/ArduinoJson/src" \

@@ -101,30 +101,13 @@ python3 tools/generate_icon_font.py
 
 ## Arduino Setup
 
-Install Arduino CLI, the ESP32 board package, and the required libraries.
-
-Add the Espressif package index if it is not already configured:
+Install Arduino CLI 1.3.0 or newer, then install the pinned development dependencies:
 
 ```bash
-arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-arduino-cli core update-index
-arduino-cli core install esp32:esp32
+tools/setup_arduino_dependencies.sh
 ```
 
-Install libraries:
-
-```bash
-arduino-cli lib install ArduinoJson
-arduino-cli lib install "Sensirion I2C SHT4x"
-arduino-cli lib install "Sensirion Core"
-```
-
-Install Seeed_GFX into your Arduino libraries folder. This provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack; it is not the stock Bodmer TFT_eSPI library.
-
-```bash
-cd ~/Documents/Arduino/libraries
-git clone https://github.com/Seeed-Studio/Seeed_GFX.git
-```
+The setup script installs ArduinoJson for the standalone C++ test runner and fetches the pinned Seeed display library. The committed `sketch.yaml` separately pins the ESP32 board package, ArduinoJson, Sensirion libraries, board options, and Seeed_GFX revision for isolated firmware builds. Seeed_GFX is fetched separately because it is not published in the Arduino Library Index; it provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack and is not the stock Bodmer TFT_eSPI library.
 
 The included `driver.h` selects Seeed's E1001 display setup with `BOARD_SCREEN_COMBO 520`. If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check Seeed_GFX and `driver.h`.
 
@@ -230,21 +213,10 @@ ARDUINO_JSON_INC=/path/to/ArduinoJson/src tools/run_unit_tests.sh
 
 ## Compile
 
-From this directory:
+After running the dependency setup, compile from this directory. The default profile in `sketch.yaml` supplies the board options and pinned dependencies:
 
 ```bash
-arduino-cli compile \
-  --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,UploadSpeed=460800,FlashSize=8M,PartitionScheme=default_8MB" \
-  .
-```
-
-If your Seeed display library is installed outside Arduino's standard library search path, pass it explicitly:
-
-```bash
-arduino-cli compile \
-  --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,UploadSpeed=460800,FlashSize=8M,PartitionScheme=default_8MB" \
-  --libraries /path/to/Arduino/libraries \
-  .
+arduino-cli compile .
 ```
 
 ## Flash
