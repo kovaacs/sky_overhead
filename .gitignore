@@ -4,6 +4,7 @@
 .arduino-cli.yaml
 .arduino-sketchbook/
 .claude/
+.idea/
 
 # Runtime configuration can contain Wi-Fi credentials and observer location.
 config.txt

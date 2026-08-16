@@ -1,5 +1,8 @@
 # Sky Overhead
 
+[![CI](https://github.com/kovaacs/sky_overhead/actions/workflows/ci.yml/badge.svg)](https://github.com/kovaacs/sky_overhead/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
 
 It is built to behave like a quiet wall appliance: wake, fetch, redraw only when the visible data changes, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
@@ -134,37 +137,18 @@ Runtime settings are read from a plain text file at the root of the microSD card
 /config.txt
 ```
 
-Use a FAT-formatted card and create `config.txt` in the root directory. Use one `KEY=VALUE` pair per line. Spaces around `=` are accepted; quoted values are not needed. Setting names are case-insensitive, as are documented option values such as `kts`, `metric`, `f`, `true`, and `on`. Blank lines and `#` comments are ignored.
-
-Minimal working example, using Budapest coordinates:
-
-```text
-SSID=your-wifi-name
-PASS=your-wifi-password
-LAT=47.4979
-LON=19.0402
-ALT=100
-TZ=CET-1CEST,M3.5.0,M10.5.0/3
-SPEED=kph
-HEIGHT=ftfl
-TEMP=c
-RADIUS=30
-NIGHT_MODE=23:00-07:00
-BUSY=60
-MAX_REFRESH=0
-DEMO=0
-```
+Use a FAT-formatted card and copy [`config.example.txt`](config.example.txt) to `config.txt` in the card's root directory, then replace the placeholder values. Use one `KEY=VALUE` pair per line. Spaces around `=` are accepted; quoted values are not needed. Setting names are case-insensitive, as are documented option values such as `kts`, `metric`, `f`, `true`, and `on`. Blank lines and `#` comments are ignored.
 
 Required fields:
 
 - `SSID`: Wi-Fi network name
-- `PASS`: Wi-Fi password
 - `LAT`, `LON`: observer location in decimal degrees
 - `ALT`: observer altitude in meters
 - `TZ`: POSIX timezone string used for local timestamps and quiet hours
 
 Optional behavior fields:
 
+- `PASS`: Wi-Fi password; leave empty for an open network
 - `SPEED`: `kph`, `mph`, or `kts`
 - `HEIGHT`: `ftfl` or `metric`
 - `TEMP`: `c` or `f`

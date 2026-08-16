@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -116,6 +117,26 @@ int main() {
   applyConfigValue(cfg, invalidRuntime, "LON", "0");
   applyConfigValue(cfg, invalidRuntime, "ALT", "0");
   expectTrue("valid zero coordinates accepted", hasRequiredRuntimeConfig(invalidRuntime));
+
+  Settings exampleCfg;
+  RuntimeConfig exampleRuntime;
+  std::ifstream example("config.example.txt");
+  expectTrue("example config opens", example.is_open());
+  std::string line;
+  while (std::getline(example, line)) {
+    applyConfigLine(exampleCfg, exampleRuntime, line);
+  }
+  expectTrue("example config has required values", hasRequiredRuntimeConfig(exampleRuntime));
+  expectEqual("example config ssid", exampleRuntime.wifiSSID, "your-wifi-name");
+  expectEqual("example config speed", exampleCfg.speed, SPD_KPH);
+  expectEqual("example config height", exampleCfg.height, HGT_FTFL);
+  expectEqual("example config temperature", exampleCfg.temp, TEMP_C);
+  expectEqual("example config radius", exampleCfg.radius, 30);
+  expectTrue("example config night mode", exampleCfg.night);
+  expectEqual("example config busy interval", exampleCfg.busy, 60);
+  expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0);
+  expectTrue("example config demo disabled", !exampleCfg.demo);
+  expectEqual("example config local feed disabled", exampleRuntime.localAdsbBaseUrl, "");
 
   std::cout << "config tests passed\n";
   return 0;
