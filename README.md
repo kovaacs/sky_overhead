@@ -86,9 +86,9 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
-- Unchanged visible state skips the e-paper refresh; every 20 redraws, a full white refresh reduces accumulated ghosting.
+- Unchanged aircraft and display state skips the e-paper refresh; climate changes alone do not trigger a redraw. Every 20 redraws, a full white refresh reduces accumulated ghosting.
 
-The screen is intentionally not live second-by-second. Each wake uses fresh data, but refreshes only when the visible state changes enough to justify an e-paper update.
+The screen is intentionally not live second-by-second. Each wake reads fresh data, but refreshes only when the aircraft or display state changes enough to justify an e-paper update, or when `MAX_REFRESH` is due. Set `MAX_REFRESH` to a positive value if temperature and humidity should be redrawn periodically even while other state remains unchanged.
 
 Reusable display glyphs are generated from Lucide SVGs. The generator downloads and caches missing source SVGs in `assets/icons/lucide/`. After adding or changing icons, install `rsvg-convert` and ImageMagick's `magick`, then run:
 
@@ -155,7 +155,7 @@ Optional behavior fields:
 - `TEMP`: `c` or `f`
 - `RADIUS`: aircraft search radius in kilometers, constrained to 1–463 km by the public source's 250 NM limit
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
-- `BUSY`: normal sleep interval in seconds
+- `BUSY`: normal sleep interval in seconds, constrained to 15–600
 - `MAX_REFRESH`: maximum time in seconds between display updates; `0` disables time-based redraws, positive values are constrained to 60–86400
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
@@ -178,7 +178,7 @@ Observer location:
 
 Wi-Fi credentials and runtime settings stay on the microSD card; `config.txt` is ignored by Git to reduce the risk of publishing it accidentally. The firmware does not send the Wi-Fi password to any data provider.
 
-When the public data sources are enabled, the configured observer latitude and longitude are included in requests to `adsb.lol`. Aircraft position and callsign are sent to `adsb.im` for route lookup. Use the optional local ADS-B feed if you prefer to keep live-aircraft discovery on your network, noting that route lookup still uses `adsb.im`.
+The configured observer latitude and longitude are included in requests to `adsb.lol`. The optional local ADS-B feed is only queried when the public aircraft request fails, so configuring it does not keep aircraft discovery on the local network. Aircraft position and callsign are sent to `adsb.im` for route lookup.
 
 HTTPS certificate verification is disabled in the current firmware to accommodate the embedded networking stack. Do not treat returned aircraft or route data as authenticated or safety-critical information.
 

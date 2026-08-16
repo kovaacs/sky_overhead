@@ -13,16 +13,16 @@ The firmware ZIP contains the separate Arduino build outputs, this guide, and `c
 
 ## Verify the Download
 
-On Linux, after downloading all release assets:
+On Linux, verify the downloaded merged binary against its entry:
 
 ```bash
-sha256sum -c SHA256SUMS
+grep 'merged\.bin$' SHA256SUMS | sha256sum -c -
 ```
 
 On macOS:
 
 ```bash
-shasum -a 256 -c SHA256SUMS
+grep 'merged\.bin$' SHA256SUMS | shasum -a 256 -c -
 ```
 
 On Windows PowerShell, compare the result with the corresponding line in `SHA256SUMS`:
