@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement to the firmware, display, hardware support, or tooling
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What limitation or user need should this address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior or interface you would like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe current workarounds or other approaches.
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware and compatibility impact
+      description: Note affected boards, peripherals, power use, refresh behavior, or configuration changes.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests for this request.
+          required: true

@@ -232,3 +232,7 @@ arduino-cli compile --upload \
 ```
 
 Serial debug output from the sketch is on the hardware UART at 115200 baud, GPIO43 TX / GPIO44 RX. That is separate from the USB upload port and upload speed.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing expectations, and pull request guidance.

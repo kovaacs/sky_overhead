@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a reproducible firmware, display, build, or hardware problem
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Remove Wi-Fi credentials and private location data from all configuration and logs.
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Seeed reTerminal E1001
+        - XIAO ESP32S3 with another display
+        - Host tests or firmware build
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: revision
+    attributes:
+      label: Firmware revision
+      description: Commit SHA, release tag, or branch name.
+      placeholder: c3f750d
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and how often does it happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest reliable sequence from power-on or build setup.
+      placeholder: |
+        1. Power on the device
+        2. Wait for the first refresh
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Sanitized configuration
+      description: Include relevant config keys, but replace SSID, password, and private coordinates.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or photos
+      description: Add serial output, CI links, display photos, or other useful evidence. Remove secrets first.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: I removed credentials and private location data.
+          required: true
