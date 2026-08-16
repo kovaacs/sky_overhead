@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Validate version tag
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Release tag must use stable SemVer, for example v0.1.0" >&2
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@81d310742121c928ea9c8bbd407b4217b432ae02 # v2.0.0
+        with:
+          version: 1.5.1
+
+      - name: Install dependencies
+        run: tools/setup_arduino_dependencies.sh
+
+      - name: Run host unit tests
+        run: tools/run_unit_tests.sh
+
+      - name: Compile firmware
+        run: arduino-cli compile --output-dir .build/firmware .
+
+      - name: Package release assets
+        run: |
+          tools/package_release.sh "$GITHUB_REF_NAME" .build/firmware .build/release
+          cd .build/release
+          shasum -a 256 -c SHA256SUMS
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            ".build/release/sky-overhead-$GITHUB_REF_NAME-merged.bin#Merged ESP32-S3 flash image" \
+            ".build/release/sky-overhead-$GITHUB_REF_NAME-firmware.zip#Component firmware package" \
+            ".build/release/SHA256SUMS#SHA-256 checksums" \
+            --verify-tag \
+            --title "Sky Overhead $GITHUB_REF_NAME" \
+            --notes "Download the merged binary for the simplest installation. See FLASHING.md for checksum verification, flashing, recovery, and SD-card configuration steps." \
+            --generate-notes
