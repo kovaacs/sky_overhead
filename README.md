@@ -6,7 +6,7 @@
 
 Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
 
-It is built to behave like a quiet wall appliance: wake, fetch, redraw only when the visible data changes, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
+It is built to behave like a quiet wall appliance: wake, fetch, redraw when aircraft or display state changes or the configured maximum refresh interval is due, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
 
 ## Hardware
 
@@ -29,7 +29,7 @@ The sketch uses keyless ADS-B sources:
 
 ## Runtime Lifecycle
 
-Each update is a full reboot from deep sleep. On wake, the sketch reads config, connects Wi-Fi, syncs time, skips aircraft checks during quiet hours, fetches aircraft and route data, redraws only if the visible state changed, then sleeps again.
+Each update is a full reboot from deep sleep. On wake, the sketch reads config, connects Wi-Fi, syncs time, skips aircraft checks during quiet hours, fetches aircraft and route data, redraws when the render signature changes or `MAX_REFRESH` is due, then sleeps again.
 
 ```text
 Wake from deep sleep
@@ -66,9 +66,9 @@ Fetch route from adsb.im when an aircraft was found
 Read battery and climate sensor
   |
   v
-Build visible-state signature
+Build render signature
   |
-  +-- unchanged -> skip e-paper refresh
+  +-- unchanged and MAX_REFRESH not due -> skip e-paper refresh
   |
   v
 Draw, update e-paper, save state, sleep BUSY seconds
