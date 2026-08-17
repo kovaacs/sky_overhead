@@ -60,5 +60,5 @@ jobs:
             ".build/release/SHA256SUMS#SHA-256 checksums" \
             --verify-tag \
             --title "Sky Overhead $GITHUB_REF_NAME" \
-            --notes "Download the merged binary for the simplest installation. See FLASHING.md for checksum verification, flashing, recovery, and SD-card configuration steps." \
+            --notes "Download the merged binary for the simplest installation. See the [flashing guide](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/FLASHING.md) for checksum verification, flashing, recovery, and SD-card configuration steps." \
             --generate-notes

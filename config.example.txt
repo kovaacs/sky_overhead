@@ -12,7 +12,9 @@ HEIGHT=ftfl
 TEMP=c
 RADIUS=30
 
-# Refresh behavior. Remove NIGHT_MODE or leave it empty to disable quiet hours.
+# Refresh behavior. BUSY is constrained to 15-600 seconds. MAX_REFRESH=0 disables
+# time-based redraws; positive values are constrained to 60-86400 seconds.
+# Remove NIGHT_MODE or leave it empty to disable quiet hours.
 NIGHT_MODE=23:00-07:00
 BUSY=60
 MAX_REFRESH=0

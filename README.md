@@ -4,9 +4,13 @@
 [![Release](https://img.shields.io/github/v/release/kovaacs/sky_overhead)](https://github.com/kovaacs/sky_overhead/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+<p align="center">
+  <img src="assets/sky-overhead-display.jpeg" width="640" alt="Sky Overhead running on a Seeed reTerminal E1001, displaying a nearby aircraft alongside temperature and humidity readings">
+</p>
+
 Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
 
-It is built to behave like a quiet wall appliance: wake, fetch, redraw only when the visible data changes, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
+It is built to behave like a quiet wall appliance: wake, fetch, redraw when aircraft or display state changes or the configured maximum refresh interval is due, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
 
 ## Hardware
 
@@ -29,7 +33,7 @@ The sketch uses keyless ADS-B sources:
 
 ## Runtime Lifecycle
 
-Each update is a full reboot from deep sleep. On wake, the sketch reads config, connects Wi-Fi, syncs time, skips aircraft checks during quiet hours, fetches aircraft and route data, redraws only if the visible state changed, then sleeps again.
+Each update is a full reboot from deep sleep. On wake, the sketch reads config, connects Wi-Fi, syncs time, skips aircraft checks during quiet hours, fetches aircraft and route data, redraws when the render signature changes or `MAX_REFRESH` is due, then sleeps again.
 
 ```text
 Wake from deep sleep
@@ -66,9 +70,9 @@ Fetch route from adsb.im when an aircraft was found
 Read battery and climate sensor
   |
   v
-Build visible-state signature
+Build render signature
   |
-  +-- unchanged -> skip e-paper refresh
+  +-- unchanged and MAX_REFRESH not due -> skip e-paper refresh
   |
   v
 Draw, update e-paper, save state, sleep BUSY seconds
@@ -86,9 +90,9 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
-- Unchanged visible state skips the e-paper refresh; every 20 redraws, a full white refresh reduces accumulated ghosting.
+- Unchanged aircraft and display state skips the e-paper refresh; climate changes alone do not trigger a redraw. Every 20 redraws, a full white refresh reduces accumulated ghosting.
 
-The screen is intentionally not live second-by-second. Each wake uses fresh data, but refreshes only when the visible state changes enough to justify an e-paper update.
+The screen is intentionally not live second-by-second. Each wake reads fresh data, but refreshes only when the aircraft or display state changes enough to justify an e-paper update, or when `MAX_REFRESH` is due. Set `MAX_REFRESH` to a positive value if temperature and humidity should be redrawn periodically even while other state remains unchanged.
 
 Reusable display glyphs are generated from Lucide SVGs. The generator downloads and caches missing source SVGs in `assets/icons/lucide/`. After adding or changing icons, install `rsvg-convert` and ImageMagick's `magick`, then run:
 
@@ -155,7 +159,7 @@ Optional behavior fields:
 - `TEMP`: `c` or `f`
 - `RADIUS`: aircraft search radius in kilometers, constrained to 1–463 km by the public source's 250 NM limit
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
-- `BUSY`: normal sleep interval in seconds
+- `BUSY`: normal sleep interval in seconds, constrained to 15–600
 - `MAX_REFRESH`: maximum time in seconds between display updates; `0` disables time-based redraws, positive values are constrained to 60–86400
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
@@ -178,7 +182,7 @@ Observer location:
 
 Wi-Fi credentials and runtime settings stay on the microSD card; `config.txt` is ignored by Git to reduce the risk of publishing it accidentally. The firmware does not send the Wi-Fi password to any data provider.
 
-When the public data sources are enabled, the configured observer latitude and longitude are included in requests to `adsb.lol`. Aircraft position and callsign are sent to `adsb.im` for route lookup. Use the optional local ADS-B feed if you prefer to keep live-aircraft discovery on your network, noting that route lookup still uses `adsb.im`.
+The configured observer latitude and longitude are included in requests to `adsb.lol`. The optional local ADS-B feed is only queried when the public aircraft request fails, so configuring it does not keep aircraft discovery on the local network. Aircraft position and callsign are sent to `adsb.im` for route lookup.
 
 HTTPS certificate verification is disabled in the current firmware to accommodate the embedded networking stack. Do not treat returned aircraft or route data as authenticated or safety-critical information.
 
