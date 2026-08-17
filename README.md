@@ -4,6 +4,10 @@
 [![Release](https://img.shields.io/github/v/release/kovaacs/sky_overhead)](https://github.com/kovaacs/sky_overhead/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+<p align="center">
+  <img src="assets/sky-overhead-display.jpeg" width="640" alt="Sky Overhead running on a Seeed reTerminal E1001, displaying a nearby aircraft alongside temperature and humidity readings">
+</p>
+
 Sky Overhead is an Arduino sketch for the Seeed reTerminal E1001 / XIAO ESP32S3. It shows the nearest overhead aircraft on the e-paper display, with type, callsign, tail number, airline, route, altitude, trend, and speed. A side panel shows the onboard temperature and humidity sensor.
 
 It is built to behave like a quiet wall appliance: wake, fetch, redraw when aircraft or display state changes or the configured maximum refresh interval is due, then sleep. Temporary network failures leave the last good screen in place, and quiet hours pause aircraft checks overnight.
