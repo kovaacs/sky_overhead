@@ -31,6 +31,7 @@ cp "$FIRMWARE_DIR/sky_overhead.ino.merged.bin" "$OUTPUT_DIR/$PACKAGE_NAME/"
 cp "$FIRMWARE_DIR/sky_overhead.ino.partitions.bin" "$OUTPUT_DIR/$PACKAGE_NAME/"
 cp FLASHING.md "$OUTPUT_DIR/$PACKAGE_NAME/"
 cp config.example.txt "$OUTPUT_DIR/$PACKAGE_NAME/"
+cp THIRD_PARTY_NOTICES.md "$OUTPUT_DIR/$PACKAGE_NAME/"
 cp "$FIRMWARE_DIR/sky_overhead.ino.merged.bin" "$OUTPUT_DIR/$PACKAGE_NAME-merged.bin"
 
 (

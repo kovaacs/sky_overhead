@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
+import hashlib
+import json
+import shutil
 import subprocess
 import tempfile
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from math import pow
 from pathlib import Path
 from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ICON_DIR = ROOT / "assets" / "icons" / "lucide"
 OUT = ROOT / "IconFont.h"
-LUCIDE_RAW = "https://raw.githubusercontent.com/lucide-icons/lucide/main"
-LICENSE_FILE = ICON_DIR / "LICENSE"
+STATE_FILE = ROOT / ".build" / "icon-font" / "state.json"
+LUCIDE_COMMIT = "59978cecf84986af59f1f9f503bcebdc89c6d166"
+LUCIDE_RAW = f"https://raw.githubusercontent.com/lucide-icons/lucide/{LUCIDE_COMMIT}/icons"
 DEFAULT_STROKE_WIDTH = "2"
 STROKE_SCALE_EXPONENT = 0.7
 STROKE_SCALE_BREAKPOINT = 2.0
@@ -34,18 +38,52 @@ ICONS = [
 ]
 
 
-def download_if_missing(path: Path, url: str) -> None:
-    if path.exists():
-        return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url, timeout=20) as response:
-        path.write_bytes(response.read())
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
-def ensure_sources() -> None:
-    for _, filename, _, _, _ in ICONS:
-        download_if_missing(ICON_DIR / filename, f"{LUCIDE_RAW}/icons/{filename}")
-    download_if_missing(LICENSE_FILE, f"{LUCIDE_RAW}/LICENSE")
+def generation_key() -> str:
+    return sha256(Path(__file__))
+
+
+def output_is_current() -> bool:
+    if not OUT.exists() or not STATE_FILE.exists():
+        return False
+    try:
+        state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return state == {"generation_key": generation_key(), "output_sha256": sha256(OUT)}
+
+
+def download_sources(icon_dir: Path) -> None:
+    filenames = sorted({icon[1] for icon in ICONS})
+    print(f"Downloading {len(filenames)} icons from Lucide commit {LUCIDE_COMMIT[:12]}...")
+
+    def download(filename: str) -> None:
+        request = urllib.request.Request(
+            f"{LUCIDE_RAW}/{filename}", headers={"User-Agent": "sky-overhead-build"}
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:
+            (icon_dir / filename).write_bytes(response.read())
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(download, filenames))
+
+
+def rendering_commands() -> tuple[str, str]:
+    rsvg = shutil.which("rsvg-convert")
+    imagemagick = shutil.which("magick") or shutil.which("convert")
+    if not rsvg or not imagemagick:
+        raise SystemExit(
+            "Icon generation requires rsvg-convert and ImageMagick; "
+            "see README.md for installation instructions"
+        )
+    return rsvg, imagemagick
 
 
 def viewbox_size(root: ElementTree.Element) -> float:
@@ -84,18 +122,20 @@ def svg_with_stroke_width(svg_path: Path, size: int, stroke_width: str, out_path
     tree.write(out_path, encoding="unicode", xml_declaration=False)
 
 
-def render_icon(svg_path: Path, size: int, stroke_width: str) -> list[list[int]]:
+def render_icon(
+    svg_path: Path, size: int, stroke_width: str, rsvg: str, imagemagick: str
+) -> list[list[int]]:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         svg = tmp_path / "icon.svg"
         png = tmp_path / "icon.png"
         svg_with_stroke_width(svg_path, size, stroke_width, svg)
         subprocess.run(
-            ["rsvg-convert", "-w", str(size), "-h", str(size), "-o", str(png), str(svg)],
+            [rsvg, "-w", str(size), "-h", str(size), "-o", str(png), str(svg)],
             check=True,
         )
         raw = subprocess.check_output(
-            ["magick", str(png), "-alpha", "remove", "-colorspace", "Gray", "-depth", "8", "gray:-"]
+            [imagemagick, str(png), "-alpha", "remove", "-colorspace", "Gray", "-depth", "8", "gray:-"]
         )
 
     pixels = []
@@ -123,18 +163,25 @@ def pack_bitmap(pixels: list[list[int]]) -> list[int]:
 
 
 def main() -> None:
-    ensure_sources()
+    if output_is_current():
+        print("IconFont.h is up to date.")
+        return
+
+    rsvg, imagemagick = rendering_commands()
 
     bitmaps = []
     glyphs = []
     offset = 0
 
-    for name, filename, char, size, stroke_width in ICONS:
-        data = pack_bitmap(render_icon(ICON_DIR / filename, size, stroke_width))
-        bitmaps.extend(data)
-        y_offset = -min(size, 127)
-        glyphs.append((offset, size, size, size + 2, 0, y_offset, char, name))
-        offset += len(data)
+    with tempfile.TemporaryDirectory() as tmp:
+        icon_dir = Path(tmp)
+        download_sources(icon_dir)
+        for name, filename, char, size, stroke_width in ICONS:
+            data = pack_bitmap(render_icon(icon_dir / filename, size, stroke_width, rsvg, imagemagick))
+            bitmaps.extend(data)
+            y_offset = -min(size, 127)
+            glyphs.append((offset, size, size, size + 2, 0, y_offset, char, name))
+            offset += len(data)
 
     reserved_char = chr(ord(ICONS[-1][2]) + 1)
     glyphs.append((offset, 0, 0, 0, 0, 0, reserved_char, "reserved"))
@@ -150,8 +197,7 @@ def main() -> None:
         for off, w, h, adv, xo, yo, char, name in glyphs
     ]
 
-    OUT.write_text(
-        f"""#pragma once
+    output = f"""#pragma once
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
@@ -160,8 +206,8 @@ namespace icon {{
 {chr(10).join(const_lines)}
 }}
 
-// Generated by tools/generate_icon_font.py from Lucide SVG icons.
-// Source icons and ISC license live under assets/icons/lucide/.
+// Generated by tools/generate_icon_font.py from commit {LUCIDE_COMMIT} of Lucide.
+// See THIRD_PARTY_NOTICES.md for license information.
 const uint8_t SkyIcon24Bitmaps[] PROGMEM = {{
 {chr(10).join(bitmap_lines)}
 }};
@@ -175,9 +221,17 @@ const GFXfont SkyIcon24 PROGMEM = {{
   (GFXglyph*)SkyIcon24Glyphs,
   0x{ord(ICONS[0][2]):02X}, 0x{ord(reserved_char):02X}, 24
 }};
-""",
+"""
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary_output = STATE_FILE.parent / "IconFont.h.tmp"
+    temporary_output.write_text(output, encoding="utf-8")
+    temporary_output.replace(OUT)
+
+    STATE_FILE.write_text(
+        json.dumps({"generation_key": generation_key(), "output_sha256": sha256(OUT)}, indent=2) + "\n",
         encoding="utf-8",
     )
+    print(f"Generated {OUT.name} from Lucide commit {LUCIDE_COMMIT[:12]}.")
 
 
 if __name__ == "__main__":
