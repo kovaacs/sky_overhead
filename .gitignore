@@ -1,10 +1,12 @@
 .DS_Store
 .build/
 /build/
+/IconFont.h
 .arduino-cli.yaml
 .arduino-sketchbook/
 .claude/
 .idea/
+__pycache__/
 
 # Runtime configuration can contain Wi-Fi credentials and observer location.
 config.txt

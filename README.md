@@ -94,11 +94,7 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 
 The screen is intentionally not live second-by-second. Each wake reads fresh data, but refreshes only when the aircraft or display state changes enough to justify an e-paper update, or when `MAX_REFRESH` is due. Set `MAX_REFRESH` to a positive value if temperature and humidity should be redrawn periodically even while other state remains unchanged.
 
-Reusable display glyphs are generated from Lucide SVGs. The generator downloads and caches missing source SVGs in `assets/icons/lucide/`. After adding or changing icons, install `rsvg-convert` and ImageMagick's `magick`, then run:
-
-```bash
-python3 tools/generate_icon_font.py
-```
+Reusable display glyphs are generated from Lucide SVGs. Firmware builds automatically download the checksum-verified Lucide 1.33.0 release archive, cache it under `.build/`, and regenerate `IconFont.h` when the generator changes. Neither the source SVGs nor generated header are stored in the repository.
 
 ## Hardware Quirks
 
@@ -113,6 +109,16 @@ Install Arduino CLI 1.3.0 or newer, then install the pinned development dependen
 
 ```bash
 tools/setup_arduino_dependencies.sh
+```
+
+The first firmware build also needs `rsvg-convert` and ImageMagick to generate the icon font:
+
+```bash
+# macOS
+brew install librsvg imagemagick
+
+# Debian/Ubuntu
+sudo apt-get install librsvg2-bin imagemagick
 ```
 
 The setup script installs ArduinoJson for the standalone C++ test runner and fetches the pinned Seeed display library. The committed `sketch.yaml` separately pins the ESP32 board package, ArduinoJson, Sensirion libraries, board options, and Seeed_GFX revision for isolated firmware builds. Seeed_GFX is fetched separately because it is not published in the Arduino Library Index; it provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack and is not the stock Bodmer TFT_eSPI library.
@@ -202,10 +208,10 @@ ARDUINO_JSON_INC=/path/to/ArduinoJson/src tools/run_unit_tests.sh
 
 ## Compile
 
-After running the dependency setup, compile from this directory. The default profile in `sketch.yaml` supplies the board options and pinned dependencies:
+After running the dependency setup, compile from this directory. The build wrapper prepares the icon font and then invokes Arduino CLI using the default profile in `sketch.yaml`:
 
 ```bash
-arduino-cli compile .
+tools/build_firmware.sh
 ```
 
 ## Flash
@@ -232,10 +238,9 @@ arduino-cli upload \
 To compile and upload in one command:
 
 ```bash
-arduino-cli compile --upload \
+tools/build_firmware.sh --upload \
   --fqbn "esp32:esp32:XIAO_ESP32S3:PSRAM=opi,UploadSpeed=460800,FlashSize=8M,PartitionScheme=default_8MB" \
-  --port <PORT> \
-  .
+  --port <PORT>
 ```
 
 Serial debug output from the sketch is on the hardware UART at 115200 baud, GPIO43 TX / GPIO44 RX. That is separate from the USB upload port and upload speed.

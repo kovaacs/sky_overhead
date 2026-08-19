@@ -25,14 +25,10 @@ tools/run_unit_tests.sh
 Compile the firmware with the pinned profile in `sketch.yaml`:
 
 ```bash
-arduino-cli compile .
+tools/build_firmware.sh
 ```
 
-If display glyphs change, install `rsvg-convert` and ImageMagick, regenerate `IconFont.h`, and include both the source icon and generated output:
-
-```bash
-python3 tools/generate_icon_font.py
-```
+The build wrapper automatically downloads the pinned, checksum-verified Lucide archive and regenerates the ignored `IconFont.h` when needed. Install `rsvg-convert` and ImageMagick before the first build; source icons and generated output are not committed.
 
 ## Making Changes
 

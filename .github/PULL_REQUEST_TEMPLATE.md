@@ -5,7 +5,7 @@ Describe what changed and why.
 ## Validation
 
 - [ ] Host unit tests pass (`tools/run_unit_tests.sh`)
-- [ ] Firmware compiles (`arduino-cli compile .`)
+- [ ] Firmware compiles (`tools/build_firmware.sh`)
 - [ ] Hardware behavior was tested, or is not affected
 - [ ] Documentation and `config.example.txt` were updated if needed
 

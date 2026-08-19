@@ -1,4 +1,8 @@
-ISC License
+# Third-Party Notices
+
+## Lucide Icons
+
+The generated icon font uses icons from Lucide 1.33.0. Lucide is licensed under the ISC License:
 
 Copyright (c) 2026 Lucide Icons and Contributors
 
@@ -13,8 +17,6 @@ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
----
 
 The following Lucide icons are derived from the Feather project:
 
