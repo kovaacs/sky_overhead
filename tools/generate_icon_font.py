@@ -16,7 +16,6 @@ OUT = ROOT / "IconFont.h"
 CACHE_DIR = ROOT / ".build" / "cache"
 STATE_FILE = ROOT / ".build" / "icon-font" / "state.json"
 LUCIDE_VERSION = "1.33.0"
-LUCIDE_COMMIT = "59978cecf84986af59f1f9f503bcebdc89c6d166"
 LUCIDE_ARCHIVE = CACHE_DIR / f"lucide-icons-{LUCIDE_VERSION}.zip"
 LUCIDE_ARCHIVE_URL = (
     f"https://github.com/lucide-icons/lucide/releases/download/{LUCIDE_VERSION}/"
@@ -74,7 +73,7 @@ def ensure_archive() -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     partial = LUCIDE_ARCHIVE.with_suffix(".zip.part")
     partial.unlink(missing_ok=True)
-    print(f"Downloading Lucide {LUCIDE_VERSION} ({LUCIDE_COMMIT})...")
+    print(f"Downloading Lucide {LUCIDE_VERSION}...")
     try:
         request = urllib.request.Request(LUCIDE_ARCHIVE_URL, headers={"User-Agent": "sky-overhead-build"})
         with urllib.request.urlopen(request, timeout=30) as response, partial.open("wb") as destination:
