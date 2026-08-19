@@ -2,7 +2,7 @@
 
 ## Lucide Icons
 
-The generated icon font uses icons from Lucide 1.33.0. Lucide is licensed under the ISC License:
+The generated icon font uses icons from Lucide commit `59978cecf84986af59f1f9f503bcebdc89c6d166`. Lucide is licensed under the ISC License:
 
 Copyright (c) 2026 Lucide Icons and Contributors
 

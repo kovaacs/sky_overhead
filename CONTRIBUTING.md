@@ -28,7 +28,7 @@ Compile the firmware with the pinned profile in `sketch.yaml`:
 tools/build_firmware.sh
 ```
 
-The build wrapper automatically downloads the pinned, checksum-verified Lucide archive and regenerates the ignored `IconFont.h` when needed. Install `rsvg-convert` and ImageMagick before the first build; source icons and generated output are not committed.
+The build wrapper automatically downloads icons from the pinned Lucide commit and regenerates the ignored `IconFont.h` when needed. Install `rsvg-convert` and ImageMagick before the first build; source icons and generated output are not committed.
 
 ## Making Changes
 

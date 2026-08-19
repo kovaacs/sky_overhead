@@ -94,7 +94,7 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 
 The screen is intentionally not live second-by-second. Each wake reads fresh data, but refreshes only when the aircraft or display state changes enough to justify an e-paper update, or when `MAX_REFRESH` is due. Set `MAX_REFRESH` to a positive value if temperature and humidity should be redrawn periodically even while other state remains unchanged.
 
-Reusable display glyphs are generated from Lucide SVGs. Firmware builds automatically download the checksum-verified Lucide 1.33.0 release archive, cache it under `.build/`, and regenerate `IconFont.h` when the generator changes. Neither the source SVGs nor generated header are stored in the repository.
+Reusable display glyphs are generated from Lucide SVGs. Firmware builds automatically download the required icons from an immutable Lucide commit and regenerate `IconFont.h` when the generator changes. Neither the source SVGs nor generated header are stored in the repository.
 
 ## Hardware Quirks
 
