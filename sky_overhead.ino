@@ -631,8 +631,8 @@ void setup() {
   int batt = batteryPct();
   Climate clim = readClimate();
 
-  // No-flash: repaint on identity, static metadata, coarse position, or display-state
-  // changes. Fast-moving motion and climate can wait; each repaint uses fresh data.
+  // Repaint immediately on identity, static metadata, or display-state changes.
+  // Telemetry and climate update opportunistically or when MAX_REFRESH is due.
   int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
   String sig = got ? foundRenderSignature(p, lowBucket)
                    : emptyRenderSignature(retainedStateFromRtc(), lowBucket);

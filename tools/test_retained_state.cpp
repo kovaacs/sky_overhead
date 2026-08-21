@@ -76,7 +76,21 @@ int main() {
   expectEqual(
     "found signature",
     foundRenderSignature(p, 1),
-    "F|3C65C2|A3|Lufthansa|DLH4JA|MUC|BUD|A20N|Airbus A320neo|D-AINZ|1|1|66|2|1");
+    "F|3C65C2|A3|Lufthansa|DLH4JA|MUC|BUD|A20N|Airbus A320neo|D-AINZ|1");
+
+  String aircraftSignature = foundRenderSignature(p, 1);
+  Plane moved = p;
+  moved.altFt = 35000;
+  moved.slantKm = 22.0;
+  moved.gsKt = 460;
+  moved.vrateFpm = -1200;
+  moved.hasGs = false;
+  moved.hasVrate = false;
+  expectEqual("telemetry does not change signature", foundRenderSignature(moved, 1), aircraftSignature);
+
+  Plane replacement = moved;
+  replacement.hex = "4CA123";
+  expectTrue("different aircraft changes signature", foundRenderSignature(replacement, 1) != aircraftSignature);
 
   expectEqual(
     "empty signature",
