@@ -90,9 +90,9 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
-- Unchanged aircraft and display state skips the e-paper refresh; climate changes alone do not trigger a redraw. Every 20 redraws, a full white refresh reduces accumulated ghosting.
+- A different aircraft or changed static display state redraws immediately. Same-aircraft telemetry and climate changes alone do not redraw the display. Every 20 redraws, a full white refresh reduces accumulated ghosting.
 
-The screen is intentionally not live second-by-second. Each wake reads fresh data, but refreshes only when the aircraft or display state changes enough to justify an e-paper update, or when `MAX_REFRESH` is due. Set `MAX_REFRESH` to a positive value if temperature and humidity should be redrawn periodically even while other state remains unchanged.
+The screen is intentionally not live second-by-second. Each wake reads fresh data and immediately redraws when the selected aircraft or static display state changes. Altitude, trend, speed, temperature, and humidity update opportunistically with those redraws. A positive `MAX_REFRESH` sets a global redraw deadline when bounded freshness is preferred.
 
 Reusable display glyphs are generated from Lucide SVGs. Firmware builds automatically download the required icons from an immutable Lucide commit and regenerate `IconFont.h` when the generator changes. Neither the source SVGs nor generated header are stored in the repository.
 
@@ -166,7 +166,7 @@ Optional behavior fields:
 - `RADIUS`: aircraft search radius in kilometers, constrained to 1–463 km by the public source's 250 NM limit
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds, constrained to 15–600
-- `MAX_REFRESH`: maximum time in seconds between display updates; `0` disables time-based redraws, positive values are constrained to 60–86400
+- `MAX_REFRESH`: global maximum time in seconds between display updates; defaults to `0`, which disables forced redraws, while positive values are constrained to 60–86400
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 

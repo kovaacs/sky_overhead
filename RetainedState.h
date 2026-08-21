@@ -1,6 +1,5 @@
 #pragma once
 
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -104,11 +103,10 @@ static inline bool applyRetainedRouteIfSame(Plane& p, const RetainedAircraftStat
 
 static inline String foundRenderSignature(const Plane& p, int lowBucket) {
   char sig[320];
-  snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%s|%s|%s|%d|%d|%ld|%ld|%d",
+  snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%s|%s|%s|%d",
            p.hex.c_str(), p.category.c_str(), p.airline.c_str(), p.callsign.c_str(),
            p.fromCode.c_str(), p.toCode.c_str(), p.typeCode.c_str(), p.typeDesc.c_str(),
-           p.reg.c_str(), p.hasVrate ? 1 : 0, p.hasGs ? 1 : 0,
-           lround(p.altFt / 500.0), lround(p.slantKm / 5.0), lowBucket);
+           p.reg.c_str(), lowBucket);
   return String(sig);
 }
 
