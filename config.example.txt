@@ -13,7 +13,7 @@ TEMP=c
 RADIUS=30
 
 # Refresh behavior. BUSY is constrained to 15-600 seconds. MAX_REFRESH=0 disables
-# forced redraws; positive values set a global maximum time between redraws.
+# forced redraws; positive values force a redraw on the first wake after the interval.
 # Remove NIGHT_MODE or leave it empty to disable quiet hours.
 NIGHT_MODE=23:00-07:00
 BUSY=60
