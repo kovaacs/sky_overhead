@@ -37,6 +37,24 @@ int main() {
   expectEqual("past rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 8, 0, 0), 23 * 60 * 60);
   expectEqual("exact time rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 7, 0, 0), 24 * 60 * 60);
 
+  // A retained RTC epoch must be interpreted in local time even when a wake
+  // cannot reach NTP. 06:10 UTC is 08:10 CEST and therefore outside quiet hours.
+  setenv("TZ", "UTC0", 1);
+  tzset();
+  struct tm utcWake = {};
+  utcWake.tm_year = 2026 - 1900;
+  utcWake.tm_mon = 7;
+  utcWake.tm_mday = 22;
+  utcWake.tm_hour = 6;
+  utcWake.tm_min = 10;
+  time_t wakeEpoch = mktime(&utcWake);
+  applyTimezone("CET-1CEST,M3.5.0,M10.5.0/3");
+  struct tm localWake = {};
+  localtime_r(&wakeEpoch, &localWake);
+  expectEqual("retained epoch uses summer timezone", localWake.tm_hour * 60 + localWake.tm_min, 8 * 60 + 10);
+  expectTrue("08:10 CEST is outside quiet hours",
+             !isNightMinute(true, 23 * 60, 7 * 60, localWake.tm_hour * 60 + localWake.tm_min));
+
   setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
   tzset();
   struct tm spring = {};

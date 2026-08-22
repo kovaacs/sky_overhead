@@ -569,6 +569,9 @@ static void goSleep(uint32_t seconds) {
 void setup() {
   Serial1.begin(115200, SERIAL_8N1, 44, 43);  // hardware UART, works without USB
   loadConfig();
+  // The RTC keeps UTC across deep sleep, but process timezone state does not.
+  // Apply it before Wi-Fi so failed connections still use the correct local time.
+  applyTimezone(runtime.tzInfo.c_str());
   epaper.begin();
   Wire.begin(pin::I2C_SDA, pin::I2C_SCL);
   sht4x.begin(Wire, 0x44);
