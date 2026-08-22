@@ -143,19 +143,8 @@ static inline int leftTextRowCount(const LeftColumnView& v) {
   return count;
 }
 
-static inline int leftRowHeight(const LeftColumnView& v, uint8_t row) {
-  uint8_t visible = 0;
-  if (v.line1.length() && visible++ == row) return 36;
-  if (v.line2.length() && visible++ == row) return 36;
-  if (hasRoute(v) && visible++ == row) return 54;
-  if (v.position.length() && visible++ == row) return 36;
-  return 0;
-}
-
 static inline int leftStackHeight(const LeftColumnView& v) {
-  int h = v.glyphSize + 18 + 42;
-  for (uint8_t row = 0; row < leftTextRowCount(v); row++) h += leftRowHeight(v, row);
-  return h;
+  return v.glyphSize + 18 + ui::LEFT_ROW_H * (1 + leftTextRowCount(v));
 }
 
 static inline void drawLeftText(int cx, int y, const String& text, const GFXfont* font) {
@@ -252,23 +241,23 @@ static inline void drawLeftColumn(LeftColumnView v) {
   drawIconCentered(v.glyph, cx, y + v.glyphSize / 2, v.glyphSize);
   y += v.glyphSize + 18;
 
-  drawLeftTitle(cx, y + 21, v);
-  y += 42;
+  drawLeftTitle(cx, y + ui::LEFT_ROW_H / 2, v);
+  y += ui::LEFT_ROW_H;
 
   if (v.line1.length()) {
-    drawLeftText(cx, y + 18, v.line1, &FreeSans18pt7b);
-    y += 36;
+    drawLeftText(cx, y + ui::LEFT_ROW_H / 2, v.line1, &FreeSans18pt7b);
+    y += ui::LEFT_ROW_H;
   }
   if (v.line2.length()) {
-    drawLeftText(cx, y + 18, v.line2, &FreeSans18pt7b);
-    y += 36;
+    drawLeftText(cx, y + ui::LEFT_ROW_H / 2, v.line2, &FreeSans18pt7b);
+    y += ui::LEFT_ROW_H;
   }
   if (hasRoute(v)) {
-    drawLeftRoute(v, cx, y + 27);
-    y += 54;
+    drawLeftRoute(v, cx, y + ui::LEFT_ROW_H / 2);
+    y += ui::LEFT_ROW_H;
   }
   if (v.position.length()) {
-    drawPositionText(cx, y + 18, v.position);
+    drawPositionText(cx, y + ui::LEFT_ROW_H / 2, v.position);
   }
   epaper.setTextDatum(TL_DATUM);
 }
