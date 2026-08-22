@@ -1,7 +1,14 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
+
+static inline void applyTimezone(const char* tzInfo) {
+  if (!tzInfo || !tzInfo[0]) return;
+  setenv("TZ", tzInfo, 1);
+  tzset();
+}
 
 static inline bool isNightMinute(bool nightEnabled, uint16_t startMinute, uint16_t endMinute, int nowMinute) {
   if (!nightEnabled) return false;
