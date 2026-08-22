@@ -94,6 +94,7 @@ namespace ui {
   constexpr int CONTENT_TOP_Y = 40;
   constexpr int DIVIDER_X = 466;
   constexpr int LEFT_TEXT_W = DIVIDER_X - 48;
+  constexpr int LEFT_ROW_H = 42;
 
   // full-screen sleep-view vertical anchors
   constexpr int LEFT_CX = DIVIDER_X / 2;
