@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-SEEED_GFX_REVISION="a2de1abca0597c202193f22d01e9fa35d1ff613b"
+SEEED_GFX_VERSION="V3.1.0"
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 LIBRARY_DIR="$ROOT_DIR/.arduino-sketchbook/libraries/Seeed_GFX"
 
@@ -23,9 +23,10 @@ if [ -n "$(git -C "$LIBRARY_DIR" status --porcelain)" ]; then
   exit 1
 fi
 
-if [ "$(git -C "$LIBRARY_DIR" rev-parse HEAD)" != "$SEEED_GFX_REVISION" ]; then
-  git -C "$LIBRARY_DIR" fetch origin "$SEEED_GFX_REVISION"
-  git -C "$LIBRARY_DIR" checkout --detach "$SEEED_GFX_REVISION"
+git -C "$LIBRARY_DIR" fetch origin "refs/tags/$SEEED_GFX_VERSION:refs/tags/$SEEED_GFX_VERSION"
+
+if [ "$(git -C "$LIBRARY_DIR" rev-parse HEAD)" != "$(git -C "$LIBRARY_DIR" rev-parse "$SEEED_GFX_VERSION^{commit}")" ]; then
+  git -C "$LIBRARY_DIR" checkout --detach "$SEEED_GFX_VERSION"
 fi
 
-echo "Seeed_GFX is pinned at $SEEED_GFX_REVISION"
+echo "Seeed_GFX is pinned at $SEEED_GFX_VERSION"
