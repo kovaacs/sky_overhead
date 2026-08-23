@@ -640,8 +640,6 @@ void setup() {
   int lowBucket = (batt >= 0 && batt < 15) ? 1 : 0;
   String sig = got ? foundRenderSignature(p, lowBucket)
                    : emptyRenderSignature(retainedStateFromRtc(), lowBucket);
-  sig += "|S|";
-  sig += sourceText;
   sig += "|U|";
   sig += String((int)cfg.temp);
   sig += "|";
