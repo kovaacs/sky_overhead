@@ -98,7 +98,7 @@ Reusable display glyphs are generated from Lucide SVGs. Firmware builds automati
 
 ## Hardware Quirks
 
-- Keep `SPIClass spiSD(HSPI)` local inside SD-card functions. A file-scope `SPIClass` can crash on boot because the constructor runs before FreeRTOS is ready.
+- Keep `SPIClass spiSD(FSPI)` local inside SD-card functions. Seeed_GFX owns `HSPI` for the e-paper display, and creating another controller object for that host can disrupt post-redraw logging. A file-scope `SPIClass` can also crash on boot because the constructor runs before FreeRTOS is ready.
 - Avoid partial e-paper refresh. `updataPartial()` exists in the UC8179 driver, but it produces heavy ghosting with the built-in waveform LUT. Use full `update()` only.
 - Use `460800` upload speed. `921600` can drop this USB-serial adapter during the baud switch.
 - The SD card slot is explicitly powered only while reading config, then powered down before Wi-Fi and fetch work.
@@ -168,11 +168,14 @@ Optional behavior fields:
 - `BUSY`: normal sleep interval in seconds, constrained to 15–600
 - `MAX_REFRESH`: interval in seconds after which the next wake forces a display update; defaults to `0`, which disables forced redraws, while positive values are constrained to 60–86400 and do not shorten sleep intervals
 - `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
+- `SD_LOG`: debug option; `1`, `true`, or `on` appends a JSON record to `/screen.log` after every physical screen redraw; defaults to disabled
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 
 Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 
 The footer shows source labels such as `adsb.lol`, `local feed`, or `local feed & retained route`.
+
+When `SD_LOG` is enabled, each line of `/screen.log` is a standalone JSON object containing the timestamp, redraw number, screen mode, battery level, and the aircraft, climate, and footer text sent to the display. The SD slot is powered and mounted only for the append operation. The logfile grows until it is removed or truncated, so enable this only while debugging.
 
 Example timezone values:
 

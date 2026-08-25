@@ -20,6 +20,7 @@ struct Settings {
   uint16_t busy = 60;
   uint32_t maxRefresh = 0;
   bool demo = false;
+  bool sdLog = false;
 };
 
 struct RuntimeConfig {
@@ -232,6 +233,10 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   else if (key == "DEMO") {
     String v = lowerValue(val);
     cfg.demo = (v == "1" || v == "true" || v == "on");
+  }
+  else if (key == "SD_LOG") {
+    String v = lowerValue(val);
+    cfg.sdLog = (v == "1" || v == "true" || v == "on");
   }
 }
 

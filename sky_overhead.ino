@@ -254,7 +254,7 @@ static void loadConfig() {
   pinMode(pin::SD_EN, OUTPUT);
   digitalWrite(pin::SD_EN, HIGH);
   delay(50);
-  SPIClass spiSD(HSPI);
+  SPIClass spiSD(FSPI);
   spiSD.begin(pin::SD_SCK, pin::SD_MISO, pin::SD_MOSI, pin::SD_CS);
   if (!SD.begin(pin::SD_CS, spiSD)) {
     LOG("[sd] init failed — no card or wiring issue\n");
@@ -525,24 +525,136 @@ static RetainedAircraftView retainedAircraftView() {
 
 #include "DisplayRenderer.h"
 
+static String screenLogTimestamp() {
+  time_t now = currentEpoch();
+  if (now <= 0) return "";
+  struct tm local;
+  localtime_r(&now, &local);
+  char timestamp[32];
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S%z", &local);
+  return String(timestamp);
+}
+
+static void appendScreenLog(JsonDocument& entry) {
+  if (!cfg.sdLog) return;
+
+  entry["timestamp"] = screenLogTimestamp();
+  entry["redraw"] = rtcRedraws;
+
+  pinMode(pin::SD_EN, OUTPUT);
+  digitalWrite(pin::SD_EN, HIGH);
+  delay(50);
+  // Seeed_GFX owns HSPI after epaper.begin(); use the other controller so
+  // remounting the card cannot reset the display's active SPI bus.
+  SPIClass spiSD(FSPI);
+  spiSD.begin(pin::SD_SCK, pin::SD_MISO, pin::SD_MOSI, pin::SD_CS);
+  if (!SD.begin(pin::SD_CS, spiSD)) {
+    LOG("[sd-log] init failed\n");
+    digitalWrite(pin::SD_EN, LOW);
+    return;
+  }
+
+  File file = SD.open("/screen.log", FILE_APPEND);
+  if (file) {
+    serializeJson(entry, file);
+    file.println();
+    file.close();
+    LOG("[sd-log] appended /screen.log\n");
+  } else {
+    LOG("[sd-log] open failed\n");
+  }
+  SD.end();
+  digitalWrite(pin::SD_EN, LOW);
+}
+
+static void logLiveScreen(
+  const Plane& p,
+  int batt,
+  const Climate& clim,
+  const RetainedAircraftView& retained,
+  const String& refreshedText,
+  const String& sourceText
+) {
+  if (!cfg.sdLog) return;
+
+  LeftColumnView left = p.found
+      ? makeLiveAircraftView(p, cfg.height, cfg.speed, displayIcons())
+      : makeRetainedAircraftView(retained, displayIcons());
+  JsonDocument entry;
+  entry["screen"] = p.found ? "live" : (hasRetainedAircraft(retained) ? "retained" : "clear");
+  entry["demo"] = cfg.demo;
+  entry["header"] = "SKY OVERHEAD";
+  if (batt >= 0) entry["battery_percent"] = batt;
+  entry["left"]["title"] = left.title;
+  entry["left"]["title_fallback"] = left.titleFallback;
+  entry["left"]["line1"] = left.line1;
+  entry["left"]["line2"] = left.line2;
+  entry["left"]["route_from"] = left.routeFrom;
+  entry["left"]["route_to"] = left.routeTo;
+  entry["left"]["position"] = left.position;
+
+  if (clim.ok) {
+    char temperature[8];
+    char humidity[8];
+    formatTemperature(temperature, sizeof(temperature), cfg.temp, clim.tempC);
+    formatHumidity(humidity, sizeof(humidity), clim.hum);
+    entry["climate"]["temperature"] = temperature;
+    entry["climate"]["temperature_unit"] = climateUnit(cfg.temp);
+    entry["climate"]["humidity"] = humidity;
+  } else {
+    entry["climate"]["temperature"] = "--";
+    entry["climate"]["humidity"] = "--";
+  }
+  entry["footer"]["refreshed"] = frameFooterRefreshedText(refreshedText);
+  if (textHasLength(sourceText)) entry["footer"]["source"] = frameFooterSourceText(sourceText);
+  appendScreenLog(entry);
+}
+
+static void logNightScreen(uint16_t wakeMinute, int batt, const String& refreshedText) {
+  if (!cfg.sdLog) return;
+
+  char wake[32];
+  snprintf(wake, sizeof(wake), "until %02u:%02u", wakeMinute / 60, wakeMinute % 60);
+  JsonDocument entry;
+  entry["screen"] = "night";
+  entry["demo"] = cfg.demo;
+  entry["header"] = "SKY OVERHEAD";
+  if (batt >= 0) entry["battery_percent"] = batt;
+  entry["title"] = "Sleeping";
+  entry["subtitle"] = "Screen refresh paused";
+  entry["wake"] = wake;
+  entry["footer"]["refreshed"] = frameFooterRefreshedText(refreshedText);
+  appendScreenLog(entry);
+}
+
 static void runDemoMode() {
   int batt = batteryPct();
   Climate clim = readClimate();
   Plane p = demoPlane();
   rememberLastSeenRtc(p);
+  RetainedAircraftView retained = retainedAircraftView();
+  String refreshedText = hhmm();
 
   uint8_t step = rtcDemoStep % 3;
   if (step == 0) {
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm());
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
   } else if (step == 1) {
     Plane empty;
-    drawLive(empty, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm());
+    drawLive(empty, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
   } else {
-    drawNightSleep(cfg.nightEnd, batt, hhmm());
+    drawNightSleep(cfg.nightEnd, batt, refreshedText);
   }
 
   epaper.update();
   rtcRedraws++;
+  if (step == 0) {
+    logLiveScreen(p, batt, clim, retained, refreshedText, "");
+  } else if (step == 1) {
+    Plane empty;
+    logLiveScreen(empty, batt, clim, retained, refreshedText, "");
+  } else {
+    logNightScreen(cfg.nightEnd, batt, refreshedText);
+  }
   rtcDemoStep = (step + 1) % 3;
   snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
   LOG("[demo] drew step %u\n", step);
@@ -592,11 +704,13 @@ void setup() {
     snprintf(sig, sizeof(sig), "N|%u|%d", cfg.nightEnd, lowBucket);
     time_t now = currentEpoch();
     if (strcmp(sig, rtcSig) != 0 || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
-      drawNightSleep(cfg.nightEnd, batt, hhmm());
+      String refreshedText = hhmm();
+      drawNightSleep(cfg.nightEnd, batt, refreshedText);
       epaper.update();
       rtcRedraws++;
       rtcLastRefreshEpoch = now;
       strncpy(rtcSig, sig, sizeof(rtcSig));
+      logNightScreen(cfg.nightEnd, batt, refreshedText);
       LOG("[draw] night screen (%s)\n", sig);
     } else {
       LOG("[draw] night unchanged, skipped\n");
@@ -653,11 +767,14 @@ void setup() {
       epaper.fillScreen(TFT_WHITE);
       epaper.update();                             // clear accumulated ghosting
     }
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retainedAircraftView(), hhmm(), sourceText);
+    RetainedAircraftView retained = retainedAircraftView();
+    String refreshedText = hhmm();
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText, sourceText);
     epaper.update();
     rtcRedraws++;
     rtcLastRefreshEpoch = now;
     sig.toCharArray(rtcSig, sizeof(rtcSig));
+    logLiveScreen(p, batt, clim, retained, refreshedText, sourceText);
     LOG("[draw] repainted (%s)\n", sig.c_str());
   } else {
     LOG("[draw] unchanged, skipped\n");
