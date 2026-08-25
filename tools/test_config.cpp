@@ -40,6 +40,7 @@ int main() {
   applyConfigValue(cfg, runtime, "BUSY", "2");
   applyConfigValue(cfg, runtime, "MAX_REFRESH", "30");
   applyConfigValue(cfg, runtime, "DEMO", "on");
+  applyConfigValue(cfg, runtime, "SD_LOG", "true");
   applyConfigValue(cfg, runtime, "NIGHT_MODE", "22:30-06:45");
 
   expectEqual("speed kts", cfg.speed, SPD_KTS);
@@ -49,6 +50,7 @@ int main() {
   expectEqual("busy constrained low", cfg.busy, 15);
   expectEqual("maximum refresh constrained low", cfg.maxRefresh, 60);
   expectTrue("demo true", cfg.demo);
+  expectTrue("sd log true", cfg.sdLog);
   expectTrue("night true", cfg.night);
   expectEqual("night start", cfg.nightStart, 22 * 60 + 30);
   expectEqual("night end", cfg.nightEnd, 6 * 60 + 45);
@@ -56,9 +58,11 @@ int main() {
   applyConfigValue(cfg, runtime, "RADIUS", "0");
   applyConfigValue(cfg, runtime, "BUSY", "999");
   applyConfigValue(cfg, runtime, "MAX_REFRESH", "0");
+  applyConfigValue(cfg, runtime, "SD_LOG", "off");
   expectEqual("radius constrained low", cfg.radius, 1);
   expectEqual("busy constrained high", cfg.busy, 600);
   expectEqual("maximum refresh disabled", cfg.maxRefresh, 0);
+  expectTrue("sd log false", !cfg.sdLog);
 
   cfg.nightStart = 123;
   cfg.nightEnd = 456;
@@ -136,6 +140,7 @@ int main() {
   expectEqual("example config busy interval", exampleCfg.busy, 60);
   expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0);
   expectTrue("example config demo disabled", !exampleCfg.demo);
+  expectTrue("example config sd log disabled", !exampleCfg.sdLog);
   expectEqual("example config local feed disabled", exampleRuntime.localAdsbBaseUrl, "");
 
   std::cout << "config tests passed\n";

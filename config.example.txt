@@ -20,5 +20,8 @@ BUSY=60
 MAX_REFRESH=0
 DEMO=0
 
+# Debug option: append one JSON record to /screen.log after every screen redraw.
+SD_LOG=0
+
 # Optional local readsb/tar1090 fallback. The firmware appends /data/aircraft.json.
 # LOCAL_ADSB_URL=http://192.168.1.20:8080
