@@ -103,19 +103,25 @@ static inline bool applyRetainedRouteIfSame(Plane& p, const RetainedAircraftStat
 
 static inline String foundRenderSignature(const Plane& p, int lowBucket) {
   char sig[320];
-  snprintf(sig, sizeof(sig), "F|%s|%s|%s|%s|%s|%s|%s|%s|%s|%d",
-           p.hex.c_str(), p.category.c_str(), p.airline.c_str(), p.callsign.c_str(),
-           p.fromCode.c_str(), p.toCode.c_str(), p.typeCode.c_str(), p.typeDesc.c_str(),
-           p.reg.c_str(), lowBucket);
+  snprintf(sig, sizeof(sig), "A|%d|%s|%s|%s|%s|%s|%s|%s",
+           lowBucket, p.category.c_str(), p.airline.c_str(), aircraftIdentity(p).c_str(),
+           p.fromCode.c_str(), p.toCode.c_str(), aircraftLabel(p).c_str(), p.typeDesc.c_str());
   return String(sig);
 }
 
 static inline String emptyRenderSignature(const RetainedAircraftState& state, int lowBucket) {
+  if (!textHasLength(state.lastAircraft)
+      && !textHasLength(state.lastIdentity)
+      && !textHasLength(state.lastSeen)) {
+    char clearSig[16];
+    snprintf(clearSig, sizeof(clearSig), "C|%d", lowBucket);
+    return String(clearSig);
+  }
+
   char sig[320];
-  snprintf(sig, sizeof(sig), "E|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s",
-           lowBucket, state.lastSeen.c_str(), state.lastFrom.c_str(), state.lastTo.c_str(),
-           state.lastCities.c_str(), state.lastAircraft.c_str(), state.lastIdentity.c_str(),
-           state.lastAirline.c_str(), state.lastCategory.c_str(), state.lastType.c_str(),
-           state.lastReg.c_str(), state.lastMotion.c_str());
+  snprintf(sig, sizeof(sig), "A|%d|%s|%s|%s|%s|%s|%s|%s",
+           lowBucket, state.lastCategory.c_str(), state.lastAirline.c_str(),
+           state.lastIdentity.c_str(), state.lastFrom.c_str(), state.lastTo.c_str(),
+           state.lastAircraft.c_str(), state.lastType.c_str());
   return String(sig);
 }

@@ -76,7 +76,7 @@ int main() {
   expectEqual(
     "found signature",
     foundRenderSignature(p, 1),
-    "F|3C65C2|A3|Lufthansa|DLH4JA|MUC|BUD|A20N|Airbus A320neo|D-AINZ|1");
+    "A|1|A3|Lufthansa|DLH4JA (D-AINZ)|MUC|BUD|A20N|Airbus A320neo");
 
   String aircraftSignature = foundRenderSignature(p, 1);
   Plane moved = p;
@@ -90,12 +90,27 @@ int main() {
 
   Plane replacement = moved;
   replacement.hex = "4CA123";
-  expectTrue("different aircraft changes signature", foundRenderSignature(replacement, 1) != aircraftSignature);
+  expectEqual("hidden hex does not change signature", foundRenderSignature(replacement, 1), aircraftSignature);
+  replacement.callsign = "OTHER";
+  expectTrue("displayed identity changes signature", foundRenderSignature(replacement, 1) != aircraftSignature);
 
   expectEqual(
-    "empty signature",
+    "retained signature",
     emptyRenderSignature(state, 0),
-    "E|0|Lufthansa|MUC|BUD|Munich to Budapest|A20N|DLH4JA (D-AINZ)|Lufthansa|A3|Airbus A320neo|D-AINZ|FL330  ...  climb.  ...  421 kts");
+    "A|0|A3|Lufthansa|DLH4JA (D-AINZ)|MUC|BUD|A20N|Airbus A320neo");
+  expectEqual(
+    "live and retained signatures match",
+    emptyRenderSignature(state, 1),
+    aircraftSignature);
+
+  state.lastMotion = "FL350  ...  desc.  ...  460 kts";
+  expectEqual(
+    "retained telemetry does not change signature",
+    emptyRenderSignature(state, 1),
+    aircraftSignature);
+
+  RetainedAircraftState clearState;
+  expectEqual("clear sky signature", emptyRenderSignature(clearState, 0), "C|0");
 
   expectEqual("live display source", displaySourceForResult(true, "adsb.lol", state), "adsb.lol");
   expectEqual("retained display source", displaySourceForResult(false, "adsb.lol", state), "adsb.lol & adsb.im");
