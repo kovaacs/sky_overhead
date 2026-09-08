@@ -1,27 +1,31 @@
-# Copy this file to /config.txt on the microSD card and replace these values.
+# Copy this file to /config.txt on the microSD card and replace the placeholders.
+
+# Network
 SSID=your-wifi-name
 PASS=your-wifi-password
-LAT=47.4979
-LON=19.0402
-ALT=100
+LOCAL_ADSB_URL=http://192.168.1.20:8080
+
+# Location (example: central Berlin)
+LAT=52.5200
+LON=13.4050
+ALT=35
+
+# Timezone (POSIX TZ string)
+# Berlin: CET-1CEST,M3.5.0,M10.5.0/3  London: GMT0BST,M3.5.0/1,M10.5.0
+# New York: EST5EDT,M3.2.0,M11.1.0
 TZ=CET-1CEST,M3.5.0,M10.5.0/3
 
-# Display units and aircraft search radius.
-SPEED=kph
+# Units (SPEED: kph|mph|kts  HEIGHT: ftfl|metric  TEMP: c|f)
+SPEED=kts
 HEIGHT=ftfl
 TEMP=c
-RADIUS=30
 
-# Refresh behavior. BUSY is constrained to 15-600 seconds. MAX_REFRESH=0 disables
-# forced redraws; positive values force a redraw on the first wake after the interval.
-# Remove NIGHT_MODE or leave it empty to disable quiet hours.
+# Display and refresh behavior
+RADIUS=3
 NIGHT_MODE=23:00-07:00
-BUSY=60
+BUSY=30
 MAX_REFRESH=0
+
+# Optional modes (0=off, 1=on)
 DEMO=0
-
-# Debug option: append one JSON record to /screen.log after every screen redraw.
 SD_LOG=0
-
-# Optional local readsb/tar1090 fallback. The firmware appends /data/aircraft.json.
-# LOCAL_ADSB_URL=http://192.168.1.20:8080
