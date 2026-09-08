@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 
 #include "../Config.h"
@@ -126,22 +127,32 @@ int main() {
   RuntimeConfig exampleRuntime;
   std::ifstream example("config.example.txt");
   expectTrue("example config opens", example.is_open());
+  std::set<std::string> exampleKeys;
   std::string line;
   while (std::getline(example, line)) {
     applyConfigLine(exampleCfg, exampleRuntime, line);
+    size_t eq = line.find('=');
+    if (eq != std::string::npos && !line.empty() && line[0] != '#') {
+      exampleKeys.insert(line.substr(0, eq));
+    }
   }
+  const std::set<std::string> supportedKeys = {
+    "SSID", "PASS", "LOCAL_ADSB_URL", "LAT", "LON", "ALT", "TZ", "SPEED",
+    "HEIGHT", "TEMP", "RADIUS", "NIGHT_MODE", "BUSY", "MAX_REFRESH", "DEMO", "SD_LOG"
+  };
+  expectTrue("example config contains every supported key", exampleKeys == supportedKeys);
   expectTrue("example config has required values", hasRequiredRuntimeConfig(exampleRuntime));
   expectEqual("example config ssid", exampleRuntime.wifiSSID, "your-wifi-name");
-  expectEqual("example config speed", exampleCfg.speed, SPD_KPH);
+  expectEqual("example config speed", exampleCfg.speed, SPD_KTS);
   expectEqual("example config height", exampleCfg.height, HGT_FTFL);
   expectEqual("example config temperature", exampleCfg.temp, TEMP_C);
-  expectEqual("example config radius", exampleCfg.radius, 30);
+  expectEqual("example config radius", exampleCfg.radius, 3);
   expectTrue("example config night mode", exampleCfg.night);
-  expectEqual("example config busy interval", exampleCfg.busy, 60);
+  expectEqual("example config busy interval", exampleCfg.busy, 30);
   expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0);
   expectTrue("example config demo disabled", !exampleCfg.demo);
   expectTrue("example config sd log disabled", !exampleCfg.sdLog);
-  expectEqual("example config local feed disabled", exampleRuntime.localAdsbBaseUrl, "");
+  expectEqual("example config local feed", exampleRuntime.localAdsbBaseUrl, "http://192.168.1.20:8080");
 
   std::cout << "config tests passed\n";
   return 0;
