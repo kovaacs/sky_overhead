@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "Aircraft.h"
+#include "AircraftLink.h"
 #include "Climate.h"
 
 constexpr uint16_t MAX_RADIUS_KM = 463;
@@ -28,6 +29,7 @@ struct RuntimeConfig {
   String wifiPass;
   String tzInfo;
   String localAdsbBaseUrl;
+  String qrUrlTemplate = DEFAULT_AIRCRAFT_INFO_URL;
   double myLat = 0.0;
   double myLon = 0.0;
   double myAltM = 0.0;
@@ -208,6 +210,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "TZ")   runtime.tzInfo = val;
   else if (key == "LOCAL_ADSB_URL") runtime.localAdsbBaseUrl = val;
+  else if (key == "QR_URL") runtime.qrUrlTemplate = val;
   else if (key == "SPEED") {
     String v = lowerValue(val);
     if      (v == "mph") cfg.speed = SPD_MPH;

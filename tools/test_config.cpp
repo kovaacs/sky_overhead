@@ -79,6 +79,7 @@ int main() {
   applyConfigValue(cfg, runtime, "ALT", "130");
   applyConfigValue(cfg, runtime, "TZ", "CET-1CEST");
   applyConfigValue(cfg, runtime, "LOCAL_ADSB_URL", "http://adsb-feeder.local:8080");
+  applyConfigValue(cfg, runtime, "QR_URL", "https://example.com/aircraft/{hex}");
   expectEqual("ssid", runtime.wifiSSID, "wifi");
   expectEqual("pass", runtime.wifiPass, "secret");
   expectEqual("lat", (int)(runtime.myLat * 10), 475);
@@ -86,6 +87,7 @@ int main() {
   expectEqual("alt", (int)runtime.myAltM, 130);
   expectEqual("tz", runtime.tzInfo, "CET-1CEST");
   expectEqual("local adsb base url", runtime.localAdsbBaseUrl, "http://adsb-feeder.local:8080");
+  expectEqual("QR URL template", runtime.qrUrlTemplate, "https://example.com/aircraft/{hex}");
   expectTrue("complete runtime config valid", hasRequiredRuntimeConfig(runtime));
   expectEqual("local adsb url from base", buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl), "http://adsb-feeder.local:8080/data/aircraft.json");
   expectEqual("local adsb url trims slash", buildLocalAdsbAircraftUrl("http://adsb-feeder.local:8080/"), "http://adsb-feeder.local:8080/data/aircraft.json");
@@ -137,7 +139,7 @@ int main() {
     }
   }
   const std::set<std::string> supportedKeys = {
-    "SSID", "PASS", "LOCAL_ADSB_URL", "LAT", "LON", "ALT", "TZ", "SPEED",
+    "SSID", "PASS", "LOCAL_ADSB_URL", "QR_URL", "LAT", "LON", "ALT", "TZ", "SPEED",
     "HEIGHT", "TEMP", "RADIUS", "NIGHT_MODE", "BUSY", "MAX_REFRESH", "DEMO", "SD_LOG"
   };
   expectTrue("example config contains every supported key", exampleKeys == supportedKeys);
@@ -153,6 +155,8 @@ int main() {
   expectTrue("example config demo disabled", !exampleCfg.demo);
   expectTrue("example config sd log disabled", !exampleCfg.sdLog);
   expectEqual("example config local feed", exampleRuntime.localAdsbBaseUrl, "http://192.168.1.20:8080");
+  expectEqual("example config QR URL", exampleRuntime.qrUrlTemplate,
+              "https://www.flightradar24.com/{hex}");
 
   std::cout << "config tests passed\n";
   return 0;

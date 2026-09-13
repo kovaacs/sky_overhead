@@ -1,5 +1,8 @@
 #pragma once
 
+#include <qrcode.h>
+
+#include "AircraftLink.h"
 #include "DisplayView.h"
 
 static inline String fit(const String& s, int maxW) {
@@ -30,6 +33,23 @@ static inline void batteryGlyph(int x, int y, int pct) {
 
 static inline void drawRouteArrow(int x, int y, int len) {
   drawIconCentered(icon::ARROW_RIGHT, x + len / 2, y, icon::ARROW_RIGHT_SIZE);
+}
+
+static inline void drawAircraftQr(const String& url) {
+  uint8_t modules[ui::QR_BUFFER_SIZE];
+  QRCode qr;
+  if (qrcode_initText(&qr, modules, ui::QR_VERSION, ECC_HIGH, url.c_str()) != 0) return;
+
+  epaper.fillRect(ui::QR_X, ui::QR_Y, ui::QR_SIZE, ui::QR_SIZE, TFT_WHITE);
+  for (uint8_t y = 0; y < qr.size; y++) {
+    for (uint8_t x = 0; x < qr.size; x++) {
+      if (qrcode_getModule(&qr, x, y)) {
+        epaper.drawPixel(ui::QR_X + ui::QR_QUIET_ZONE + x,
+                        ui::QR_Y + ui::QR_QUIET_ZONE + y,
+                        TFT_BLACK);
+      }
+    }
+  }
 }
 
 static inline void drawRouteCodes(const String& fromCode, const String& toCode, int cx, int cy) {
@@ -92,11 +112,13 @@ static inline void drawClimatePanel(const Climate& c, TempUnit tempUnit) {
   epaper.setTextDatum(TL_DATUM);
 }
 
-static inline void drawFrameHeader(int batt) {
-  drawIcon(icon::PLANE, ui::HDR_ICON_X, ui::HDR_ICON_Y, icon::PLANE_SIZE);
+static inline void drawFrameHeader(int batt, const String& aircraftUrl = "") {
+  if (textHasLength(aircraftUrl)) drawAircraftQr(aircraftUrl);
   epaper.setFreeFont(&FreeSansBold9pt7b);
-  epaper.drawString("SKY OVERHEAD", ui::HDR_TEXT_X, ui::HDR_TEXT_Y);
+  epaper.setTextDatum(MC_DATUM);
+  epaper.drawString("SKY OVERHEAD", ui::SCREEN_W / 2, ui::HDR_TEXT_Y);
   batteryGlyph(ui::BATT_X, ui::BATT_Y, batt);
+  epaper.setTextDatum(TL_DATUM);
 }
 
 static inline void drawFrameFooter(const String& refreshedText, const String& sourceText = "") {
@@ -292,13 +314,15 @@ static inline void drawLive(
   SpeedUnit speed,
   const RetainedAircraftView& retained,
   const String& refreshedText,
+  const String& qrUrlTemplate,
   const String& sourceText = ""
 ) {
   epaper.fillScreen(TFT_WHITE);
   epaper.setTextDatum(TL_DATUM);
   epaper.setTextColor(TFT_BLACK, TFT_WHITE);
 
-  drawFrameHeader(batt);
+  String aircraftUrl = p.found ? aircraftInfoUrl(p, qrUrlTemplate) : String("");
+  drawFrameHeader(batt, aircraftUrl);
   if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, displayIcons()));
   else drawLeftColumn(makeRetainedAircraftView(retained, displayIcons()));
 

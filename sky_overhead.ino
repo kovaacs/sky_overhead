@@ -15,7 +15,7 @@
  * Build settings:
  *   Display : Seeed_GFX   (driver.h must contain: #define BOARD_SCREEN_COMBO 520)
  *   Board   : XIAO_ESP32S3    PSRAM: OPI PSRAM (ON)
- *   Libs    : Seeed_GFX (a TFT_eSPI fork), ArduinoJson v7
+ *   Libs    : Seeed_GFX (a TFT_eSPI fork), ArduinoJson v7, QRCode
  *
  * Hardware notes (verified for the E1001, but worth checking on your unit):
  *   Battery : read on GPIO1 after pulling GPIO21 high; ~2x voltage divider.
@@ -38,6 +38,7 @@
 #include "AdsbParser.h"
 #include "AdsbFallback.h"
 #include "Aircraft.h"
+#include "AircraftLink.h"
 #include "Climate.h"
 #include "ClimateSensor.h"
 #include "Config.h"
@@ -89,7 +90,7 @@ namespace ui {
   constexpr int SCREEN_W = 800, SCREEN_H = 480;
   constexpr int MARGIN   = 24;
 
-  constexpr int HDR_TEXT_Y = 14;
+  constexpr int HDR_TEXT_Y = 20;
   constexpr int BATT_X = 740, BATT_Y = 12, BATT_W = 40, BATT_H = 18;
   constexpr int CONTENT_TOP_Y = 40;
   constexpr int DIVIDER_X = 466;
@@ -112,10 +113,6 @@ namespace ui {
   constexpr int SLEEP_WAKE_Y = 326;
 
   // shared frame geometry
-  constexpr int HDR_ICON_X = MARGIN - 2;
-  constexpr int HDR_ICON_Y = HDR_TEXT_Y - 8;
-  constexpr int HDR_TEXT_X = MARGIN + 26;
-
   // right panel = indoor climate (thermometer + droplet)
   constexpr int PANEL_CX  = 632;     // panel centre
   constexpr int ICON_X    = 548;     // icon centre
@@ -124,6 +121,15 @@ namespace ui {
   constexpr int HUM_Y     = 325;     // vertical centre of the humidity row
 
   constexpr int FOOTER_Y = 452;
+
+  // Live-aircraft QR in the top-left corner.
+  constexpr int QR_VERSION = 6;
+  constexpr int QR_QUIET_ZONE = 4;
+  constexpr int QR_MODULES = 4 * QR_VERSION + 17;
+  constexpr int QR_BUFFER_SIZE = (QR_MODULES * QR_MODULES + 7) / 8;
+  constexpr int QR_SIZE = QR_MODULES + 2 * QR_QUIET_ZONE;
+  constexpr int QR_X = MARGIN;
+  constexpr int QR_Y = 2;
 
 }
 
@@ -636,7 +642,7 @@ static void runDemoMode() {
 
   uint8_t step = rtcDemoStep % 2;
   if (step == 0) {
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText, runtime.qrUrlTemplate);
   } else {
     drawNightSleep(cfg.nightEnd, batt, refreshedText);
   }
@@ -753,6 +759,12 @@ void setup() {
   sig += String((int)cfg.height);
   sig += "|";
   sig += String((int)cfg.speed);
+  if (got) {
+    char qrSig[16];
+    snprintf(qrSig, sizeof(qrSig), "|QR|%08lx",
+             (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(p, runtime.qrUrlTemplate)));
+    sig += qrSig;
+  }
 
   time_t now = currentEpoch();
   if (sig != String(rtcSig) || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
@@ -762,7 +774,8 @@ void setup() {
     }
     RetainedAircraftView retained = retainedAircraftView();
     String refreshedText = hhmm();
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText, sourceText);
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText,
+             runtime.qrUrlTemplate, sourceText);
     epaper.update();
     rtcRedraws++;
     rtcLastRefreshEpoch = now;

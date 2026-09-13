@@ -15,6 +15,9 @@ ALT=35
 # New York: EST5EDT,M3.2.0,M11.1.0
 TZ=CET-1CEST,M3.5.0,M10.5.0/3
 
+# Aircraft details QR. {hex} is replaced with the ICAO/Mode-S identifier.
+QR_URL=https://www.flightradar24.com/{hex}
+
 # Units (SPEED: kph|mph|kts  HEIGHT: ftfl|metric  TEMP: c|f)
 SPEED=kts
 HEIGHT=ftfl
