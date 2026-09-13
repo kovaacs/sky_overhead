@@ -5,7 +5,7 @@
 #include "Aircraft.h"
 
 constexpr const char* DEFAULT_AIRCRAFT_INFO_URL = "https://www.flightradar24.com/data/aircraft/{reg}";
-constexpr size_t AIRCRAFT_INFO_URL_MAX = 58;
+constexpr size_t AIRCRAFT_INFO_URL_MAX = 53;
 
 static inline bool aircraftLinkWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\r' || c == '\n';

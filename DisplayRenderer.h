@@ -38,15 +38,15 @@ static inline void drawRouteArrow(int x, int y, int len) {
 static inline void drawAircraftQr(const String& url) {
   uint8_t modules[ui::QR_BUFFER_SIZE];
   QRCode qr;
-  if (qrcode_initText(&qr, modules, ui::QR_VERSION, ECC_HIGH, url.c_str()) != 0) return;
+  if (qrcode_initText(&qr, modules, ui::QR_VERSION, ECC_LOW, url.c_str()) != 0) return;
 
   epaper.fillRect(ui::QR_X, ui::QR_Y, ui::QR_SIZE, ui::QR_SIZE, TFT_WHITE);
   for (uint8_t y = 0; y < qr.size; y++) {
     for (uint8_t x = 0; x < qr.size; x++) {
       if (qrcode_getModule(&qr, x, y)) {
-        epaper.drawPixel(ui::QR_X + ui::QR_QUIET_ZONE + x,
-                        ui::QR_Y + ui::QR_QUIET_ZONE + y,
-                        TFT_BLACK);
+        epaper.fillRect(ui::QR_X + (ui::QR_QUIET_ZONE + x) * ui::QR_SCALE,
+                       ui::QR_Y + (ui::QR_QUIET_ZONE + y) * ui::QR_SCALE,
+                       ui::QR_SCALE, ui::QR_SCALE, TFT_BLACK);
       }
     }
   }

@@ -171,7 +171,7 @@ Optional behavior fields:
 - `DEMO`: `1` to skip network fetches and alternate between dummy live-aircraft and night screens for layout iteration; `0` for normal operation
 - `SD_LOG`: debug option; `1`, `true`, or `on` appends a JSON record to `/screen.log` after every physical screen redraw; defaults to disabled
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
-- `QR_URL`: aircraft-information URL template containing `{reg}`; defaults to `https://www.flightradar24.com/data/aircraft/{reg}`. Leave it empty to hide the QR code. A missing registration or generated URL over 58 characters hides the QR.
+- `QR_URL`: aircraft-information URL template containing `{reg}`; defaults to `https://www.flightradar24.com/data/aircraft/{reg}`. Leave it empty to hide the QR code. A missing registration or generated URL over 53 characters hides the QR.
 
 Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 

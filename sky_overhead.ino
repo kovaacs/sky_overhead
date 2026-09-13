@@ -123,11 +123,12 @@ namespace ui {
   constexpr int FOOTER_Y = 452;
 
   // Live-aircraft QR in the top-left corner.
-  constexpr int QR_VERSION = 13;
+  constexpr int QR_VERSION = 3;
+  constexpr int QR_SCALE = 2;
   constexpr int QR_QUIET_ZONE = 4;
   constexpr int QR_MODULES = 4 * QR_VERSION + 17;
   constexpr int QR_BUFFER_SIZE = (QR_MODULES * QR_MODULES + 7) / 8;
-  constexpr int QR_SIZE = QR_MODULES + 2 * QR_QUIET_ZONE;
+  constexpr int QR_SIZE = (QR_MODULES + 2 * QR_QUIET_ZONE) * QR_SCALE;
   constexpr int QR_X = MARGIN / 2;
   constexpr int QR_Y = MARGIN / 2;
 
