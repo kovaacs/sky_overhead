@@ -32,12 +32,33 @@ static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength
   return normalized;
 }
 
+static inline char aircraftLinkLower(char c) {
+  return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
+}
+
+static inline bool aircraftLinkStartsWith(const String& text, const char* prefix) {
+  size_t i = 0;
+  while (prefix[i]) {
+    if (i >= text.length() || aircraftLinkLower(text[i]) != prefix[i]) return false;
+    i++;
+  }
+  return true;
+}
+
 static inline bool aircraftLinkHttpUrl(const String& url) {
-#if defined(ARDUINO)
-  return url.startsWith("https://") || url.startsWith("http://");
-#else
-  return url.rfind("https://", 0) == 0 || url.rfind("http://", 0) == 0;
-#endif
+  size_t authorityStart = 0;
+  if (aircraftLinkStartsWith(url, "https://")) authorityStart = 8;
+  else if (aircraftLinkStartsWith(url, "http://")) authorityStart = 7;
+  else return false;
+
+  size_t authorityEnd = url.length();
+  for (size_t i = 0; i < url.length(); i++) {
+    unsigned char c = static_cast<unsigned char>(url[i]);
+    if (c <= ' ' || c == 127) return false;
+    if (i >= authorityStart && authorityEnd == url.length()
+        && (c == '/' || c == '?' || c == '#')) authorityEnd = i;
+  }
+  return authorityEnd > authorityStart;
 }
 
 static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {

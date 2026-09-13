@@ -22,6 +22,10 @@ int main() {
               "https://example.com/d-ainb");
   expectEqual("missing placeholder", aircraftInfoUrl(p, "https://example.com/aircraft"), "");
   expectEqual("reject non-http URL", aircraftInfoUrl(p, "javascript:{reg}"), "");
+  expectEqual("uppercase scheme", aircraftInfoUrl(p, "HTTPS://example.com/{reg}"),
+              "HTTPS://example.com/d-ainb");
+  expectEqual("reject missing authority", aircraftInfoUrl(p, "https:///{reg}"), "");
+  expectEqual("reject URL whitespace", aircraftInfoUrl(p, "https://example.com/{reg} extra"), "");
   expectEqual("blank template disables QR", aircraftInfoUrl(p, ""), "");
   expectEqual("reject oversized URL", aircraftInfoUrl(p,
               "https://example.com/a-very-long-aircraft-information-provider/path/{reg}"), "");

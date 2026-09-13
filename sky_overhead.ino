@@ -136,7 +136,7 @@ namespace ui {
 
 // All settings — loaded from config.txt on the SD card.
 // State that survives deep sleep but not a power cycle.
-RTC_DATA_ATTR char     rtcSig[320]     = "";   // signature of what's on screen
+RTC_DATA_ATTR char     rtcSig[352]     = "";   // signature of what's on screen
 RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
