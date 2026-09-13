@@ -81,7 +81,7 @@ def rendering_commands() -> tuple[str, str]:
     if not rsvg or not imagemagick:
         raise SystemExit(
             "Icon generation requires rsvg-convert and ImageMagick; "
-            "see README.md for installation instructions"
+            "see CONTRIBUTING.md for installation instructions"
         )
     return rsvg, imagemagick
 

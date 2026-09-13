@@ -84,4 +84,4 @@ If esptool cannot connect, hold BOOT, tap RESET, release BOOT, and run the comma
 
 Copy `config.example.txt` to `config.txt` at the root of a FAT-formatted microSD card. Replace the placeholder Wi-Fi, location, altitude, and timezone values, then insert the card before starting the device.
 
-See the [SD Card Config](README.md#sd-card-config) documentation for every setting and privacy considerations.
+See the README's [configuration](README.md#configure) and [privacy](README.md#data-and-privacy) sections for supported settings and data-sharing considerations.
