@@ -147,7 +147,6 @@ RTC_DATA_ATTR char     rtcLastAirline[96] = ""; // airline of last plane
 RTC_DATA_ATTR char     rtcLastCategory[8] = ""; // ADS-B category for last icon choice
 RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
-RTC_DATA_ATTR char     rtcLastHex[12]  = "";   // ICAO/Mode-S aircraft identifier
 RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
 RTC_DATA_ATTR char     rtcLastSource[48] = ""; // sources for the retained aircraft view
 RTC_DATA_ATTR double   rtcLastAltFt = 0;
@@ -453,7 +452,7 @@ static Plane demoPlane() {
   p.toCity = "Budapest";
   p.typeCode = "A20N";
   p.typeDesc = "Airbus A320neo";
-  p.reg = "D-AINZ";
+  p.reg = "D-AINB";
   p.altFt = 33000;
   p.slantKm = 8.2;
   p.gsKt = 421;
@@ -476,7 +475,6 @@ static RetainedAircraftState retainedStateFromRtc() {
   state.lastCategory = String(rtcLastCategory);
   state.lastType = String(rtcLastType);
   state.lastReg = String(rtcLastReg);
-  state.lastHex = String(rtcLastHex);
   state.lastMotion = String(rtcLastMotion);
   state.lastSource = String(rtcLastSource);
   state.lastAltFt = rtcLastAltFt;
@@ -500,7 +498,6 @@ static void writeRetainedStateToRtc(const RetainedAircraftState& state) {
   state.lastCategory.toCharArray(rtcLastCategory, sizeof(rtcLastCategory));
   state.lastType.toCharArray(rtcLastType, sizeof(rtcLastType));
   state.lastReg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
-  state.lastHex.toCharArray(rtcLastHex, sizeof(rtcLastHex));
   state.lastMotion.toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
   state.lastSource.toCharArray(rtcLastSource, sizeof(rtcLastSource));
   rtcLastAltFt = state.lastAltFt;
@@ -528,7 +525,7 @@ static RetainedAircraftView retainedAircraftView() {
   retained.lastAirline = state.lastAirline;
   retained.lastCategory = state.lastCategory;
   retained.lastType = state.lastType;
-  retained.lastHex = state.lastHex;
+  retained.lastReg = state.lastReg;
   retained.lastMotion = retainedMotionText(state, cfg.height, cfg.speed);
   return retained;
 }
@@ -764,7 +761,8 @@ void setup() {
   sig += "|";
   sig += String((int)cfg.speed);
   Plane qrPlane;
-  qrPlane.hex = got ? p.hex : retainedStateFromRtc().lastHex;
+  RetainedAircraftState qrState = retainedStateFromRtc();
+  qrPlane.reg = got ? p.reg : qrState.lastReg;
   char qrSig[16];
   snprintf(qrSig, sizeof(qrSig), "|QR|%08lx",
            (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(qrPlane, runtime.qrUrlTemplate)));

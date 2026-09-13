@@ -89,7 +89,7 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Primary aircraft label: aircraft description such as `AIRBUS A-320neo` when it fits, otherwise the type code; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
-- QR code: a live aircraft adds a compact link in the top-left corner using its ICAO/Mode-S hex identifier. The destination defaults to Flightradar24 and is configurable with `QR_URL`.
+- QR code: a live aircraft adds a compact link in the top-left corner. The destination defaults to Flightradar24's registration-based aircraft details page and is configurable with `QR_URL`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
 - A different aircraft or changed static display state redraws immediately. Same-aircraft telemetry and climate changes alone do not redraw the display. Every 20 redraws, a full white refresh reduces accumulated ghosting.
 
@@ -171,7 +171,7 @@ Optional behavior fields:
 - `DEMO`: `1` to skip network fetches and alternate between dummy live-aircraft and night screens for layout iteration; `0` for normal operation
 - `SD_LOG`: debug option; `1`, `true`, or `on` appends a JSON record to `/screen.log` after every physical screen redraw; defaults to disabled
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
-- `QR_URL`: aircraft-information URL template containing `{hex}`; defaults to `https://www.flightradar24.com/{hex}`. For example, use `https://globe.adsb.lol/?icao={hex}` for adsb.lol, or leave it empty to hide the QR code. Compact QR capacity limits the generated URL to 58 characters.
+- `QR_URL`: aircraft-information URL template containing `{reg}`; defaults to `https://www.flightradar24.com/data/aircraft/{reg}`. Leave it empty to hide the QR code. A missing registration or generated URL over 58 characters hides the QR.
 
 Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 

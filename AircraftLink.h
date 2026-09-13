@@ -4,7 +4,7 @@
 
 #include "Aircraft.h"
 
-constexpr const char* DEFAULT_AIRCRAFT_INFO_URL = "https://www.flightradar24.com/{hex}";
+constexpr const char* DEFAULT_AIRCRAFT_INFO_URL = "https://www.flightradar24.com/data/aircraft/{reg}";
 constexpr size_t AIRCRAFT_INFO_URL_MAX = 58;
 
 static inline bool aircraftLinkWhitespace(char c) {
@@ -41,8 +41,8 @@ static inline bool aircraftLinkHttpUrl(const String& url) {
 }
 
 static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {
-  String id = normalizeAircraftLinkId(p.hex, 8);
-  if (!textHasLength(id)) return "";
+  String reg = normalizeAircraftLinkId(p.reg, 12);
+  if (!textHasLength(reg)) return "";
 
   size_t start = 0;
   size_t end = urlTemplate.length();
@@ -50,15 +50,15 @@ static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAUL
   while (end > start && aircraftLinkWhitespace(urlTemplate[end - 1])) end--;
 #if defined(ARDUINO)
   urlTemplate = urlTemplate.substring(start, end);
-  if (urlTemplate.indexOf("{hex}") < 0) return "";
-  urlTemplate.replace("{hex}", id);
+  if (urlTemplate.indexOf("{reg}") < 0) return "";
+  urlTemplate.replace("{reg}", reg);
 #else
   urlTemplate = urlTemplate.substr(start, end - start);
-  size_t token = urlTemplate.find("{hex}");
+  size_t token = urlTemplate.find("{reg}");
   if (token == String::npos) return "";
   while (token != String::npos) {
-    urlTemplate.replace(token, 5, id);
-    token = urlTemplate.find("{hex}", token + id.length());
+    urlTemplate.replace(token, 5, reg);
+    token = urlTemplate.find("{reg}", token + reg.length());
   }
 #endif
   if (!aircraftLinkHttpUrl(urlTemplate) || urlTemplate.length() > AIRCRAFT_INFO_URL_MAX) return "";

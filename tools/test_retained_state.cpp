@@ -53,7 +53,6 @@ int main() {
   expectEqual("route key", state.lastRouteKey, "DLH4JA");
   expectEqual("route cities", state.lastCities, "Munich to Budapest");
   expectEqual("identity", state.lastIdentity, "DLH4JA (D-AINZ)");
-  expectEqual("ICAO hex", state.lastHex, "3C65C2");
   expectEqual("motion", state.lastMotion, "FL330  ...  climb.  ...  421 kts");
   expectEqual("retained motion reformats", retainedMotionText(state, HGT_METRIC, SPD_KPH), "10058 m  ...  climb.  ...  780 km/h");
   expectEqual("source", state.lastSource, "adsb.lol & adsb.im");

@@ -322,7 +322,7 @@ static inline void drawLive(
   epaper.setTextColor(TFT_BLACK, TFT_WHITE);
 
   Plane qrPlane;
-  qrPlane.hex = p.found ? p.hex : retained.lastHex;
+  qrPlane.reg = p.found ? p.reg : retained.lastReg;
   String aircraftUrl = aircraftInfoUrl(qrPlane, qrUrlTemplate);
   drawFrameHeader(batt, aircraftUrl);
   if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, displayIcons()));

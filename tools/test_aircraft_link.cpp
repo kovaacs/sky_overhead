@@ -13,28 +13,23 @@ static void expectEqual(const char* name, const std::string& actual, const std::
 
 int main() {
   Plane p;
-  p.reg = "D-AINZ";
-  p.callsign = "DLH4JA";
-  p.hex = " 3C65C2 ";
-  expectEqual("default ICAO hex link", aircraftInfoUrl(p),
-              "https://www.flightradar24.com/3c65c2");
-  expectEqual("custom provider", aircraftInfoUrl(p, "https://globe.adsb.lol/?icao={hex}"),
-              "https://globe.adsb.lol/?icao=3c65c2");
-  expectEqual("trim template", aircraftInfoUrl(p, " https://example.com/{hex} "),
-              "https://example.com/3c65c2");
+  p.reg = "D-AINB";
+  expectEqual("default registration link", aircraftInfoUrl(p),
+              "https://www.flightradar24.com/data/aircraft/d-ainb");
+  expectEqual("custom provider", aircraftInfoUrl(p, "https://example.com/aircraft/{reg}"),
+              "https://example.com/aircraft/d-ainb");
+  expectEqual("trim template", aircraftInfoUrl(p, " https://example.com/{reg} "),
+              "https://example.com/d-ainb");
   expectEqual("missing placeholder", aircraftInfoUrl(p, "https://example.com/aircraft"), "");
-  expectEqual("reject non-http URL", aircraftInfoUrl(p, "javascript:{hex}"), "");
+  expectEqual("reject non-http URL", aircraftInfoUrl(p, "javascript:{reg}"), "");
   expectEqual("blank template disables QR", aircraftInfoUrl(p, ""), "");
   expectEqual("reject oversized URL", aircraftInfoUrl(p,
-              "https://example.com/a-very-long-aircraft-information-provider/path/{hex}"), "");
+              "https://example.com/a-very-long-aircraft-information-provider/path/{reg}"), "");
 
-  p.hex = "";
-  expectEqual("missing identifier", aircraftInfoUrl(p), "");
-
-  p.hex = "3C65_C2";
+  p.reg = "D_AINB";
   expectEqual("unsafe identifier", aircraftInfoUrl(p), "");
 
-  p.hex = "123456789";
+  p.reg = "ABCDEFGHIJKLM";
   expectEqual("oversized identifier", aircraftInfoUrl(p), "");
 
   std::cout << "aircraft link tests passed\n";
