@@ -167,7 +167,7 @@ Optional behavior fields:
 - `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit it or leave it empty to disable night mode
 - `BUSY`: normal sleep interval in seconds, constrained to 15–600
 - `MAX_REFRESH`: interval in seconds after which the next wake forces a display update; defaults to `0`, which disables forced redraws, while positive values are constrained to 60–86400 and do not shorten sleep intervals
-- `DEMO`: `1` to skip network fetches and cycle through dummy live, retained-aircraft, and night screens for layout iteration; `0` for normal operation
+- `DEMO`: `1` to skip network fetches and alternate between dummy live-aircraft and night screens for layout iteration; `0` for normal operation
 - `SD_LOG`: debug option; `1`, `true`, or `on` appends a JSON record to `/screen.log` after every physical screen redraw; defaults to disabled
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
 

@@ -631,16 +631,12 @@ static void runDemoMode() {
   int batt = batteryPct();
   Climate clim = readClimate();
   Plane p = demoPlane();
-  rememberLastSeenRtc(p);
-  RetainedAircraftView retained = retainedAircraftView();
+  RetainedAircraftView retained;
   String refreshedText = hhmm();
 
-  uint8_t step = rtcDemoStep % 3;
+  uint8_t step = rtcDemoStep % 2;
   if (step == 0) {
     drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
-  } else if (step == 1) {
-    Plane empty;
-    drawLive(empty, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
   } else {
     drawNightSleep(cfg.nightEnd, batt, refreshedText);
   }
@@ -649,13 +645,10 @@ static void runDemoMode() {
   rtcRedraws++;
   if (step == 0) {
     logLiveScreen(p, batt, clim, retained, refreshedText, "");
-  } else if (step == 1) {
-    Plane empty;
-    logLiveScreen(empty, batt, clim, retained, refreshedText, "");
   } else {
     logNightScreen(cfg.nightEnd, batt, refreshedText);
   }
-  rtcDemoStep = (step + 1) % 3;
+  rtcDemoStep = (step + 1) % 2;
   snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
   LOG("[demo] drew step %u\n", step);
   uint32_t demoSleep = cfg.busy < 30 ? cfg.busy : 30;
