@@ -10,6 +10,47 @@ Contributions that improve reliability, hardware support, documentation, or the 
 
 ## Development Setup
 
+### Docker Builds (Recommended)
+
+Install Docker with Buildx (included in Docker Desktop), then run from the repository root:
+
+```bash
+docker buildx bake
+```
+
+This runs the unit tests, generates the icon font, compiles firmware, packages a `v0.0.0` development release, and verifies its checksums. Outputs are exported to `.build/firmware/` and `.build/release/`. These are the same Docker targets used by GitHub Actions.
+
+To run individual targets:
+
+```bash
+docker buildx bake tests
+docker buildx bake firmware
+RELEASE_VERSION=v0.1.0 docker buildx bake release
+```
+
+Both firmware and release targets require passing unit tests. `RELEASE_VERSION` controls package filenames; it does not create a Git tag or publish a release. Use a clean checkout of the corresponding tag when reproducing a published release.
+
+The build platform is fixed to `linux/arm64`, running natively on Apple Silicon Docker Desktop and GitHub's `ubuntu-24.04-arm` runners. On x86 hosts, Docker needs ARM64 emulation support; Docker Desktop includes it. The first build downloads the ESP32 toolchain and requires several GB of Docker disk space. Docker caches completed layers; changing source files reruns tests and compilation.
+
+Reproducibility inputs are recorded in the repository:
+
+- `Dockerfile`: Debian base image digest, dated Debian package snapshot, checksum-verified Arduino CLI 1.5.1, fixed build paths, UTC locale settings, and `SOURCE_DATE_EPOCH=1704067200` (2024-01-01 UTC).
+- `sketch.yaml`: ESP32 platform, Arduino libraries, and board options.
+- `tools/setup_arduino_dependencies.sh`: Seeed_GFX tag and verified commit.
+- `tools/generate_icon_font.py`: Lucide source commit.
+
+The fixed epoch stabilizes compiler timestamps and release ZIP metadata; archive entries are sorted and extra ZIP metadata is omitted. Host Arduino configuration, installed libraries, generated fonts, and build outputs are excluded from the Docker context. Dependency downloads still require internet access on uncached builds.
+
+For a fresh compilation without reusing the firmware layer:
+
+```bash
+docker buildx bake firmware --set firmware.no-cache-filter=firmware-build
+```
+
+Use `--no-cache` to rebuild all layers, including dependency installation. When updating the toolchain, update its pins deliberately and compare the resulting firmware and release checksums across fresh builds.
+
+### Native Development Tools
+
 Install Arduino CLI 1.3.0 or newer, then install the pinned development dependencies:
 
 ```bash
