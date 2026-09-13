@@ -1,0 +1,17 @@
+.git
+.github
+.arduino-cli.yaml
+.arduino-sketchbook
+.build
+build
+IconFont.h
+.claude
+.idea
+.DS_Store
+**/__pycache__
+assets
+config.txt
+secrets.h
+.env
+.env.*
+*.pem

@@ -2,6 +2,7 @@
 set -eu
 
 SEEED_GFX_VERSION="V3.1.0"
+SEEED_GFX_COMMIT="0b13b21f284c9bce3351b394bbd871b688d6aec7"
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 LIBRARY_DIR="$ROOT_DIR/.arduino-sketchbook/libraries/Seeed_GFX"
 
@@ -26,8 +27,13 @@ fi
 
 git -C "$LIBRARY_DIR" fetch origin "refs/tags/$SEEED_GFX_VERSION:refs/tags/$SEEED_GFX_VERSION"
 
-if [ "$(git -C "$LIBRARY_DIR" rev-parse HEAD)" != "$(git -C "$LIBRARY_DIR" rev-parse "$SEEED_GFX_VERSION^{commit}")" ]; then
-  git -C "$LIBRARY_DIR" checkout --detach "$SEEED_GFX_VERSION"
+if [ "$(git -C "$LIBRARY_DIR" rev-parse "$SEEED_GFX_VERSION^{commit}")" != "$SEEED_GFX_COMMIT" ]; then
+  echo "Seeed_GFX $SEEED_GFX_VERSION does not match pinned commit $SEEED_GFX_COMMIT" >&2
+  exit 1
+fi
+
+if [ "$(git -C "$LIBRARY_DIR" rev-parse HEAD)" != "$SEEED_GFX_COMMIT" ]; then
+  git -C "$LIBRARY_DIR" checkout --detach "$SEEED_GFX_COMMIT"
 fi
 
 echo "Seeed_GFX is pinned at $SEEED_GFX_VERSION"

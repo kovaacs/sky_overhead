@@ -37,6 +37,22 @@ cp "$FIRMWARE_DIR/sky_overhead.ino.merged.bin" "$OUTPUT_DIR/$PACKAGE_NAME-merged
 
 (
   cd "$OUTPUT_DIR"
-  zip -qr "$PACKAGE_NAME-firmware.zip" "$PACKAGE_NAME"
+  if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+    # Normalize archive metadata for reproducible container builds.
+    python3 - "$PACKAGE_NAME" "$SOURCE_DATE_EPOCH" <<'PY'
+import os
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+timestamp = int(sys.argv[2])
+for path in [root, *sorted(root.rglob("*"))]:
+    os.chmod(path, 0o755 if path.is_dir() else 0o644)
+    os.utime(path, (timestamp, timestamp))
+PY
+  fi
+  # Recreate the archive so reruns cannot retain files from a previous ZIP.
+  rm -f "$PACKAGE_NAME-firmware.zip"
+  LC_ALL=C find "$PACKAGE_NAME" -type f | LC_ALL=C sort | zip -Xq "$PACKAGE_NAME-firmware.zip" -@
   shasum -a 256 "$PACKAGE_NAME-merged.bin" "$PACKAGE_NAME-firmware.zip" > SHA256SUMS
 )
