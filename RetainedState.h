@@ -17,6 +17,7 @@ struct RetainedAircraftState {
   String lastCategory;
   String lastType;
   String lastReg;
+  String lastHex;
   String lastMotion;
   String lastSource;
   double lastAltFt = 0;
@@ -60,6 +61,7 @@ static inline void rememberLastSeen(
   state.lastCategory = p.category;
   state.lastType = p.typeDesc;
   state.lastReg = p.reg;
+  state.lastHex = p.hex;
   state.lastMotion = motionText(p, height, speed);
   state.lastAltFt = p.altFt;
   state.lastGsKt = p.gsKt;

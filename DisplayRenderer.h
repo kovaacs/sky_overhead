@@ -321,7 +321,9 @@ static inline void drawLive(
   epaper.setTextDatum(TL_DATUM);
   epaper.setTextColor(TFT_BLACK, TFT_WHITE);
 
-  String aircraftUrl = p.found ? aircraftInfoUrl(p, qrUrlTemplate) : String("");
+  Plane qrPlane;
+  qrPlane.hex = p.found ? p.hex : retained.lastHex;
+  String aircraftUrl = aircraftInfoUrl(qrPlane, qrUrlTemplate);
   drawFrameHeader(batt, aircraftUrl);
   if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, displayIcons()));
   else drawLeftColumn(makeRetainedAircraftView(retained, displayIcons()));
