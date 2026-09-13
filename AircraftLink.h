@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "Aircraft.h"
 
 constexpr const char* DEFAULT_AIRCRAFT_INFO_URL = "https://www.flightradar24.com/{hex}";
