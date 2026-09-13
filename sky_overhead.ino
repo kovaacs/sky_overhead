@@ -129,7 +129,7 @@ namespace ui {
   constexpr int QR_BUFFER_SIZE = (QR_MODULES * QR_MODULES + 7) / 8;
   constexpr int QR_SIZE = QR_MODULES + 2 * QR_QUIET_ZONE;
   constexpr int QR_X = MARGIN;
-  constexpr int QR_Y = 2;
+  constexpr int QR_Y = MARGIN;
 
 }
 
