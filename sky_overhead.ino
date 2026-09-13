@@ -15,7 +15,7 @@
  * Build settings:
  *   Display : Seeed_GFX   (driver.h must contain: #define BOARD_SCREEN_COMBO 520)
  *   Board   : XIAO_ESP32S3    PSRAM: OPI PSRAM (ON)
- *   Libs    : Seeed_GFX (a TFT_eSPI fork), ArduinoJson v7
+ *   Libs    : Seeed_GFX (a TFT_eSPI fork), ArduinoJson v7, QRCode
  *
  * Hardware notes (verified for the E1001, but worth checking on your unit):
  *   Battery : read on GPIO1 after pulling GPIO21 high; ~2x voltage divider.
@@ -38,6 +38,7 @@
 #include "AdsbParser.h"
 #include "AdsbFallback.h"
 #include "Aircraft.h"
+#include "AircraftLink.h"
 #include "Climate.h"
 #include "ClimateSensor.h"
 #include "Config.h"
@@ -89,7 +90,7 @@ namespace ui {
   constexpr int SCREEN_W = 800, SCREEN_H = 480;
   constexpr int MARGIN   = 24;
 
-  constexpr int HDR_TEXT_Y = 14;
+  constexpr int HDR_TEXT_Y = 20;
   constexpr int BATT_X = 740, BATT_Y = 12, BATT_W = 40, BATT_H = 18;
   constexpr int CONTENT_TOP_Y = 40;
   constexpr int DIVIDER_X = 466;
@@ -112,10 +113,6 @@ namespace ui {
   constexpr int SLEEP_WAKE_Y = 326;
 
   // shared frame geometry
-  constexpr int HDR_ICON_X = MARGIN - 2;
-  constexpr int HDR_ICON_Y = HDR_TEXT_Y - 8;
-  constexpr int HDR_TEXT_X = MARGIN + 26;
-
   // right panel = indoor climate (thermometer + droplet)
   constexpr int PANEL_CX  = 632;     // panel centre
   constexpr int ICON_X    = 548;     // icon centre
@@ -125,11 +122,21 @@ namespace ui {
 
   constexpr int FOOTER_Y = 452;
 
+  // Live-aircraft QR in the top-left corner.
+  constexpr int QR_VERSION = 3;
+  constexpr int QR_SCALE = 2;
+  constexpr int QR_QUIET_ZONE = 4;
+  constexpr int QR_MODULES = 4 * QR_VERSION + 17;
+  constexpr int QR_BUFFER_SIZE = (QR_MODULES * QR_MODULES + 7) / 8;
+  constexpr int QR_SIZE = (QR_MODULES + 2 * QR_QUIET_ZONE) * QR_SCALE;
+  constexpr int QR_X = MARGIN / 2;
+  constexpr int QR_Y = MARGIN / 2;
+
 }
 
 // All settings — loaded from config.txt on the SD card.
 // State that survives deep sleep but not a power cycle.
-RTC_DATA_ATTR char     rtcSig[320]     = "";   // signature of what's on screen
+RTC_DATA_ATTR char     rtcSig[352]     = "";   // signature of what's on screen
 RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
@@ -446,7 +453,7 @@ static Plane demoPlane() {
   p.toCity = "Budapest";
   p.typeCode = "A20N";
   p.typeDesc = "Airbus A320neo";
-  p.reg = "D-AINZ";
+  p.reg = "D-AINB";
   p.altFt = 33000;
   p.slantKm = 8.2;
   p.gsKt = 421;
@@ -519,6 +526,7 @@ static RetainedAircraftView retainedAircraftView() {
   retained.lastAirline = state.lastAirline;
   retained.lastCategory = state.lastCategory;
   retained.lastType = state.lastType;
+  retained.lastReg = state.lastReg;
   retained.lastMotion = retainedMotionText(state, cfg.height, cfg.speed);
   return retained;
 }
@@ -636,7 +644,7 @@ static void runDemoMode() {
 
   uint8_t step = rtcDemoStep % 2;
   if (step == 0) {
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText);
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText, runtime.qrUrlTemplate);
   } else {
     drawNightSleep(cfg.nightEnd, batt, refreshedText);
   }
@@ -753,6 +761,13 @@ void setup() {
   sig += String((int)cfg.height);
   sig += "|";
   sig += String((int)cfg.speed);
+  Plane qrPlane;
+  RetainedAircraftState qrState = retainedStateFromRtc();
+  qrPlane.reg = got ? p.reg : qrState.lastReg;
+  char qrSig[16];
+  snprintf(qrSig, sizeof(qrSig), "|QR|%08lx",
+           (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(qrPlane, runtime.qrUrlTemplate)));
+  sig += qrSig;
 
   time_t now = currentEpoch();
   if (sig != String(rtcSig) || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
@@ -762,7 +777,8 @@ void setup() {
     }
     RetainedAircraftView retained = retainedAircraftView();
     String refreshedText = hhmm();
-    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText, sourceText);
+    drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText,
+             runtime.qrUrlTemplate, sourceText);
     epaper.update();
     rtcRedraws++;
     rtcLastRefreshEpoch = now;

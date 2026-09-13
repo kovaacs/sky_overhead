@@ -34,6 +34,7 @@ struct RetainedAircraftView {
   String lastAirline;
   String lastCategory;
   String lastType;
+  String lastReg;
   String lastMotion;
 };
 

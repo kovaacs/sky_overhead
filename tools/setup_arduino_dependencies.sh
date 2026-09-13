@@ -6,6 +6,7 @@ ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 LIBRARY_DIR="$ROOT_DIR/.arduino-sketchbook/libraries/Seeed_GFX"
 
 arduino-cli lib install ArduinoJson@7.4.3
+arduino-cli lib install QRCode@0.0.1
 
 mkdir -p "$(dirname -- "$LIBRARY_DIR")"
 

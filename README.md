@@ -89,6 +89,7 @@ State that must survive deep sleep lives in `RTC_DATA_ATTR`: last rendered signa
 - Primary aircraft label: aircraft description such as `AIRBUS A-320neo` when it fits, otherwise the type code; rotorcraft use a helicopter glyph when ADS-B reports category `A7`.
 - Secondary labels: callsign and tail number, for example `FIN7EH (OH-LZH)`, then airline.
 - Detail row: altitude, vertical trend, and speed, for example `FL132 | climb. | 307 kts`.
+- QR code: a live aircraft adds a compact link in the top-left corner. The destination defaults to Flightradar24's registration-based aircraft details page and is configurable with `QR_URL`.
 - Missing aircraft fields collapse upward instead of leaving blank rows.
 - A different aircraft or changed static display state redraws immediately. Same-aircraft telemetry and climate changes alone do not redraw the display. Every 20 redraws, a full white refresh reduces accumulated ghosting.
 
@@ -121,7 +122,7 @@ brew install librsvg imagemagick
 sudo apt-get install librsvg2-bin imagemagick
 ```
 
-The setup script installs ArduinoJson for the standalone C++ test runner and fetches the pinned Seeed display library. The committed `sketch.yaml` separately pins the ESP32 board package, ArduinoJson, Sensirion libraries, board options, and Seeed_GFX revision for isolated firmware builds. Seeed_GFX is fetched separately because it is not published in the Arduino Library Index; it provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack and is not the stock Bodmer TFT_eSPI library.
+The setup script installs ArduinoJson and QRCode and fetches the pinned Seeed display library. The committed `sketch.yaml` separately pins the ESP32 board package, ArduinoJson, QRCode, Sensirion libraries, board options, and Seeed_GFX revision for isolated firmware builds. Seeed_GFX is fetched separately because it is not published in the Arduino Library Index; it provides the reTerminal E Series e-paper `TFT_eSPI.h` / `EPaper` stack and is not the stock Bodmer TFT_eSPI library.
 
 The included `driver.h` selects Seeed's E1001 display setup with `BOARD_SCREEN_COMBO 520`. If compilation fails with missing `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE`, check Seeed_GFX and `driver.h`.
 
@@ -170,6 +171,7 @@ Optional behavior fields:
 - `DEMO`: `1` to skip network fetches and alternate between dummy live-aircraft and night screens for layout iteration; `0` for normal operation
 - `SD_LOG`: debug option; `1`, `true`, or `on` appends a JSON record to `/screen.log` after every physical screen redraw; defaults to disabled
 - `LOCAL_ADSB_URL`: optional readsb/tar1090 fallback base URL, for example `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
+- `QR_URL`: aircraft-information URL template containing `{reg}`; defaults to `https://www.flightradar24.com/data/aircraft/{reg}`. Leave it empty to hide the QR code. A missing registration or generated URL over 53 characters hides the QR.
 
 Units, radius, and sleep interval have defaults. Quiet hours are disabled unless `NIGHT_MODE` is configured. The firmware tries `adsb.lol` first; if that request fails and `LOCAL_ADSB_URL` is configured, it falls back to the local feed. Prefer a DHCP-reserved LAN IP over an `.local` hostname.
 
