@@ -135,7 +135,7 @@ If no serial port appears, press RESET. If the upload still cannot connect, hold
 These optional `/config.txt` settings are intended for development rather than normal use:
 
 - `DEMO=1` skips network requests and alternates between sample aircraft and quiet-hours screens for layout work.
-- `SD_LOG=1` appends one JSON record to `/screen.log` after each completed content redraw. Each record contains the timestamp, redraw number, screen mode, battery level, and aircraft, climate, and footer text sent to the display.
+- `SD_LOG=1` appends to `/screen.jsonl` in [JSON Lines](https://jsonlines.org/) (JSONL) format, with one JSON object per line after each completed content redraw. Each record contains the timestamp, redraw number, screen mode, battery level, and aircraft, climate, and footer text sent to the display.
 
 `SD_LOG` also accepts `true` or `on`. Logging powers and mounts the SD card for each append after the normal configuration read. The file grows until removed or truncated, so enable logging only while debugging.
 

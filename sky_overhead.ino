@@ -562,12 +562,12 @@ static void appendScreenLog(JsonDocument& entry) {
     return;
   }
 
-  File file = SD.open("/screen.log", FILE_APPEND);
+  File file = SD.open("/screen.jsonl", FILE_APPEND);
   if (file) {
     serializeJson(entry, file);
     file.println();
     file.close();
-    LOG("[sd-log] appended /screen.log\n");
+    LOG("[sd-log] appended /screen.jsonl\n");
   } else {
     LOG("[sd-log] open failed\n");
   }
