@@ -28,6 +28,19 @@ struct Plane {
   double gsKt = 0, vrateFpm = 0;
 };
 
+static inline String trimCopy(String s) {
+#if defined(ARDUINO)
+  s.trim();
+#else
+  const char* ws = " \t\r\n";
+  size_t start = s.find_first_not_of(ws);
+  if (start == String::npos) return "";
+  size_t end = s.find_last_not_of(ws);
+  s = s.substr(start, end - start + 1);
+#endif
+  return s;
+}
+
 static inline bool textHasLength(const String& s) {
 #if defined(ARDUINO)
   return s.length() > 0;
