@@ -90,7 +90,7 @@ static inline LeftColumnView makeRetainedAircraftView(
     return v;
   }
 
-  const bool helicopter = isHelicopterCategory(retained.lastCategory.c_str());
+  const bool helicopter = retained.lastCategory == "A7";
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
   v.titleFallback = retained.lastAircraft;

@@ -122,10 +122,6 @@ static inline bool isHelicopter(const Plane& p) {
   return p.category == "A7";
 }
 
-static inline bool isHelicopterCategory(const char* category) {
-  return strcmp(category, "A7") == 0;
-}
-
 static inline void appendMotionPart(String& text, const String& part) {
   if (!textHasLength(part)) return;
   if (textHasLength(text)) text += "  ...  ";
