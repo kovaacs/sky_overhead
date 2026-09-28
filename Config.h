@@ -145,14 +145,11 @@ static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
   while (baseUrl.endsWith("/")) baseUrl.remove(baseUrl.length() - 1);
   if (baseUrl.endsWith("/data/aircraft.json")) return baseUrl;
 #else
-  if (baseUrl.rfind("http://", 0) != 0 && baseUrl.rfind("https://", 0) != 0) {
+  if (!baseUrl.starts_with("http://") && !baseUrl.starts_with("https://")) {
     baseUrl = "http://" + baseUrl;
   }
   while (!baseUrl.empty() && baseUrl.back() == '/') baseUrl.pop_back();
-  const String suffix = "/data/aircraft.json";
-  if (baseUrl.size() >= suffix.size() && baseUrl.compare(baseUrl.size() - suffix.size(), suffix.size(), suffix) == 0) {
-    return baseUrl;
-  }
+  if (baseUrl.ends_with("/data/aircraft.json")) return baseUrl;
 #endif
 
   baseUrl += "/data/aircraft.json";
