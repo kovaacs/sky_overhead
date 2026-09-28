@@ -21,20 +21,18 @@ STROKE_SCALE_EXPONENT = 0.7
 STROKE_SCALE_BREAKPOINT = 2.0
 
 ICONS = [
-    ("PLANE", "plane.svg", "A", 24, DEFAULT_STROKE_WIDTH),
-    ("SUN", "sun.svg", "B", 144, DEFAULT_STROKE_WIDTH),
-    ("MOON_STAR", "moon-star.svg", "C", 144, DEFAULT_STROKE_WIDTH),
-    ("THERMOMETER", "thermometer.svg", "D", 64, DEFAULT_STROKE_WIDTH),
-    ("DROPLET", "droplet.svg", "E", 64, DEFAULT_STROKE_WIDTH),
-    ("ARROW_RIGHT", "arrow-right.svg", "F", 48, DEFAULT_STROKE_WIDTH),
-    ("BATTERY_EMPTY", "battery.svg", "G", 32, DEFAULT_STROKE_WIDTH),
-    ("BATTERY_LOW", "battery-low.svg", "H", 32, DEFAULT_STROKE_WIDTH),
-    ("BATTERY_MEDIUM", "battery-medium.svg", "I", 32, DEFAULT_STROKE_WIDTH),
-    ("BATTERY_FULL", "battery-full.svg", "J", 32, DEFAULT_STROKE_WIDTH),
-    ("PLANE_LARGE", "plane.svg", "K", 144, DEFAULT_STROKE_WIDTH),
-    ("HELICOPTER_LARGE", "helicopter.svg", "L", 144, DEFAULT_STROKE_WIDTH),
-    ("CLOUDY_LARGE", "cloudy.svg", "M", 144, DEFAULT_STROKE_WIDTH),
-    ("DOT", "dot.svg", "N", 32, "4"),
+    ("MOON_STAR", "moon-star.svg", "A", 144, DEFAULT_STROKE_WIDTH),
+    ("THERMOMETER", "thermometer.svg", "B", 64, DEFAULT_STROKE_WIDTH),
+    ("DROPLET", "droplet.svg", "C", 64, DEFAULT_STROKE_WIDTH),
+    ("ARROW_RIGHT", "arrow-right.svg", "D", 48, DEFAULT_STROKE_WIDTH),
+    ("BATTERY_EMPTY", "battery.svg", "E", 32, DEFAULT_STROKE_WIDTH),
+    ("BATTERY_LOW", "battery-low.svg", "F", 32, DEFAULT_STROKE_WIDTH),
+    ("BATTERY_MEDIUM", "battery-medium.svg", "G", 32, DEFAULT_STROKE_WIDTH),
+    ("BATTERY_FULL", "battery-full.svg", "H", 32, DEFAULT_STROKE_WIDTH),
+    ("PLANE_LARGE", "plane.svg", "I", 144, DEFAULT_STROKE_WIDTH),
+    ("HELICOPTER_LARGE", "helicopter.svg", "J", 144, DEFAULT_STROKE_WIDTH),
+    ("CLOUDY_LARGE", "cloudy.svg", "K", 144, DEFAULT_STROKE_WIDTH),
+    ("DOT", "dot.svg", "L", 32, "4"),
 ]
 
 
