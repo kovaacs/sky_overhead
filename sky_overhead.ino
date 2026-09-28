@@ -495,22 +495,6 @@ static void rememberLastSeenRtc(const Plane& p, const String& source = "") {
   writeRetainedStateToRtc(state);
 }
 
-static RetainedAircraftView retainedAircraftView() {
-  RetainedAircraftState state = retainedStateFromRtc();
-  RetainedAircraftView retained;
-  retained.lastSeen = state.lastSeen;
-  retained.lastFrom = state.lastFrom;
-  retained.lastTo = state.lastTo;
-  retained.lastAircraft = state.lastAircraft;
-  retained.lastIdentity = state.lastIdentity;
-  retained.lastAirline = state.lastAirline;
-  retained.lastCategory = state.lastCategory;
-  retained.lastType = state.lastType;
-  retained.lastReg = state.lastReg;
-  retained.lastMotion = retainedMotionText(state, cfg.height, cfg.speed);
-  return retained;
-}
-
 #include "DisplayRenderer.h"
 
 static String screenLogTimestamp() {
@@ -559,7 +543,7 @@ static void logLiveScreen(
   const Plane& p,
   int batt,
   const Climate& clim,
-  const RetainedAircraftView& retained,
+  const RetainedAircraftState& retained,
   const String& refreshedText,
   const String& sourceText
 ) {
@@ -567,7 +551,7 @@ static void logLiveScreen(
 
   LeftColumnView left = p.found
       ? makeLiveAircraftView(p, cfg.height, cfg.speed, displayIcons())
-      : makeRetainedAircraftView(retained, displayIcons());
+      : makeRetainedAircraftView(retained, cfg.height, cfg.speed, displayIcons());
   JsonDocument entry;
   entry["screen"] = p.found ? "live" : (hasRetainedAircraft(retained) ? "retained" : "clear");
   entry["demo"] = cfg.demo;
@@ -619,7 +603,7 @@ static void runDemoMode() {
   int batt = batteryPct();
   Climate clim = readClimate();
   Plane p = demoPlane();
-  RetainedAircraftView retained;
+  RetainedAircraftState retained;
   String refreshedText = hhmm();
 
   uint8_t step = rtcDemoStep % 2;
@@ -755,7 +739,7 @@ void setup() {
       epaper.fillScreen(TFT_WHITE);
       epaper.update();                             // clear accumulated ghosting
     }
-    RetainedAircraftView retained = retainedAircraftView();
+    RetainedAircraftState retained = retainedStateFromRtc();
     String refreshedText = hhmm();
     drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText,
              runtime.qrUrlTemplate, sourceText);

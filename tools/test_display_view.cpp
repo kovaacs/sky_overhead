@@ -52,14 +52,14 @@ int main() {
   expectEqual("helicopter glyph size", heliView.glyphSize, 200);
 
   // With no retained aircraft, the empty view is the clear-skies placeholder.
-  RetainedAircraftView none;
-  LeftColumnView clear = makeRetainedAircraftView(none, icons);
+  RetainedAircraftState none;
+  LeftColumnView clear = makeRetainedAircraftView(none, HGT_FTFL, SPD_KTS, icons);
   expectEqual("clear glyph", clear.glyph, 3);
   expectEqual("clear title", clear.title, "Clear skies");
   expectEqual("clear rows", clear.line1, "");
 
   // Retained aircraft data chooses saved metadata and route/motion fields.
-  RetainedAircraftView retained;
+  RetainedAircraftState retained;
   retained.lastAircraft = "A20N";
   retained.lastType = "Airbus A320neo";
   retained.lastIdentity = "DLH4JA";
@@ -68,8 +68,8 @@ int main() {
   retained.lastCategory = "A7";
   retained.lastFrom = "MUC";
   retained.lastTo = "BUD";
-  retained.lastMotion = "FL330";
-  LeftColumnView retainedView = makeRetainedAircraftView(retained, icons);
+  retained.lastAltFt = 33000;
+  LeftColumnView retainedView = makeRetainedAircraftView(retained, HGT_FTFL, SPD_KTS, icons);
   expectEqual("retained glyph", retainedView.glyph, 2);
   expectEqual("retained title", retainedView.title, "Airbus A320neo");
   expectEqual("retained title fallback", retainedView.titleFallback, "A20N");
@@ -77,6 +77,11 @@ int main() {
   expectEqual("retained airline", retainedView.line2, "Lufthansa");
   expectEqual("retained route", retainedView.routeFrom + ">" + retainedView.routeTo, "MUC>BUD");
   expectEqual("retained motion", retainedView.position, "FL330");
+  retained.lastGsKt = 421;
+  retained.lastHasGs = true;
+  expectEqual("retained view uses current units",
+              makeRetainedAircraftView(retained, HGT_METRIC, SPD_KPH, icons).position,
+              "10058 m  ...  780 km/h");
 
   std::cout << "display view tests passed\n";
   return 0;

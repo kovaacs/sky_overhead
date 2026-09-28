@@ -312,7 +312,7 @@ static inline void drawLive(
   TempUnit tempUnit,
   HeightUnit height,
   SpeedUnit speed,
-  const RetainedAircraftView& retained,
+  const RetainedAircraftState& retained,
   const String& refreshedText,
   const String& qrUrlTemplate,
   const String& sourceText = ""
@@ -326,7 +326,7 @@ static inline void drawLive(
   String aircraftUrl = aircraftInfoUrl(qrPlane, qrUrlTemplate);
   drawFrameHeader(batt, aircraftUrl);
   if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, displayIcons()));
-  else drawLeftColumn(makeRetainedAircraftView(retained, displayIcons()));
+  else drawLeftColumn(makeRetainedAircraftView(retained, height, speed, displayIcons()));
 
   drawClimatePanel(clim, tempUnit);
 
