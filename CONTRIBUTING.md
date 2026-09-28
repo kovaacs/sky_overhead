@@ -12,7 +12,7 @@ Contributions that improve reliability, hardware support, documentation, or the 
 
 ### Docker Builds (Recommended)
 
-Install Docker with Buildx (included in Docker Desktop), then run from the repository root:
+Use Docker for development builds and tests: it provides the pinned toolchain used by CI without installing Arduino or icon-generation tools on your host. Install Docker with Buildx (included in Docker Desktop), then run from the repository root:
 
 ```bash
 docker buildx bake
@@ -30,7 +30,7 @@ RELEASE_VERSION=v0.1.0 docker buildx bake release
 
 Both firmware and release targets require passing unit tests. `RELEASE_VERSION` controls package filenames; it does not create a Git tag or publish a release. Use a clean checkout of the corresponding tag when reproducing a published release.
 
-The build platform is fixed to `linux/arm64`, running natively on Apple Silicon Docker Desktop and GitHub's `ubuntu-24.04-arm` runners. On x86 hosts, Docker needs ARM64 emulation support; Docker Desktop includes it. The first build downloads the ESP32 toolchain and requires several GB of Docker disk space. Docker caches completed layers; changing source files reruns tests and compilation.
+The build platform is fixed to `linux/arm64`, running natively on Apple Silicon Docker Desktop and GitHub's `ubuntu-24.04-arm` runners. On x86 hosts, Docker needs ARM64 emulation support; Docker Desktop includes it. The first build downloads the ESP32 toolchain and requires several GB of Docker disk space. Docker caches dependencies and icon generation before copying source files, so source changes rerun tests and compilation without downloading dependencies again. Release documentation changes rerun only packaging.
 
 Reproducibility inputs are recorded in the repository:
 
@@ -49,7 +49,9 @@ docker buildx bake firmware --set firmware.no-cache-filter=firmware-build
 
 Use `--no-cache` to rebuild all layers, including dependency installation. When updating the toolchain, update its pins deliberately and compare the resulting firmware and release checksums across fresh builds.
 
-### Native Development Tools
+### Native Builds (Alternative)
+
+Native builds are supported when you need a host-installed toolchain, but Docker is the recommended workflow. The steps below require managing Arduino and icon-generation tools yourself.
 
 Install Arduino CLI 1.3.0 or newer, then install the pinned development dependencies:
 
@@ -97,13 +99,32 @@ If `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE` is missing during compilation, ver
 
 ## Tests
 
-The host suite covers logic that can run without the board, including formatting, display layout, configuration parsing, quiet hours, retained state, and JSON parsing. The runner auto-detects ArduinoJson in standard Arduino library directories. To use another location:
+The host suite covers logic that can run without the board, including formatting, display layout, configuration parsing, quiet hours, retained state, and JSON parsing. Run it with Docker:
+
+```bash
+docker buildx bake tests
+```
+
+The default `docker buildx bake` also runs these tests before compiling firmware. For native testing, the runner auto-detects ArduinoJson in standard Arduino library directories. To use another location:
 
 ```bash
 ARDUINO_JSON_INC=/path/to/ArduinoJson/src tools/run_unit_tests.sh
 ```
 
 ## Upload from Source
+
+### Docker-Built Firmware (Recommended)
+
+Run `docker buildx bake firmware`, then use [FLASHING.md](FLASHING.md#install-esptool) to install esptool on your host and find the device's serial port. Flash the exported merged image:
+
+```bash
+esptool --chip esp32s3 \
+  --port <PORT> \
+  --baud 460800 \
+  write-flash 0x0 .build/firmware/sky_overhead.ino.merged.bin
+```
+
+### Native Arduino CLI Upload (Alternative)
 
 Connect the device over USB and locate its USB serial port:
 
@@ -161,10 +182,7 @@ Seeed's reTerminal E Series Arduino guides provide additional display and periph
 
 ## Pull Requests
 
-Pull requests must pass both required CI checks:
-
-- `Host unit tests`
-- `Firmware build`
+Pull requests must pass the required `Firmware build` CI check, which runs host unit tests before compiling firmware and validating release packaging. Branch protection requires only `Firmware build`; there is no separate unit-test check.
 
 Describe what changed, why it changed, and how it was tested. Include display photos or screenshots for visible changes when possible. State clearly when hardware validation was not performed.
 
