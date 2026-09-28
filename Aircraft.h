@@ -2,7 +2,6 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <string.h>
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -90,7 +89,7 @@ static inline String normalizeAircraftText(String s) {
   std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
     return static_cast<char>(std::toupper(c));
   });
-  s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+  std::erase(s, ' ');
 #endif
   return s;
 }
