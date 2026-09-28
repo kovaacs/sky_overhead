@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
@@ -38,25 +39,6 @@ struct RuntimeConfig {
   bool hasAlt = false;
 };
 
-static inline int clampInt(int value, int lo, int hi) {
-  if (value < lo) return lo;
-  if (value > hi) return hi;
-  return value;
-}
-
-static inline String trimCopy(String s) {
-#if defined(ARDUINO)
-  s.trim();
-#else
-  const char* ws = " \t\r\n";
-  size_t start = s.find_first_not_of(ws);
-  if (start == String::npos) return "";
-  size_t end = s.find_last_not_of(ws);
-  s = s.substr(start, end - start + 1);
-#endif
-  return s;
-}
-
 static inline String lowerValue(String s) {
   s = trimCopy(s);
 #if defined(ARDUINO)
@@ -77,14 +59,6 @@ static inline int stringToInt(const String& s) {
 #endif
 }
 
-static inline double stringToDouble(const String& s) {
-#if defined(ARDUINO)
-  return s.toDouble();
-#else
-  return std::atof(s.c_str());
-#endif
-}
-
 static inline bool parseDoubleStrict(const String& s, double& value) {
   String text = trimCopy(s);
   if (!textHasLength(text)) return false;
@@ -98,10 +72,6 @@ static inline bool parseDoubleStrict(const String& s, double& value) {
 static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
   return textHasLength(runtime.wifiSSID) && textHasLength(runtime.tzInfo) &&
          runtime.hasLat && runtime.hasLon && runtime.hasAlt;
-}
-
-static inline bool isDigitChar(char c) {
-  return c >= '0' && c <= '9';
 }
 
 static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
@@ -120,11 +90,14 @@ static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
   if (minuteDigits != 2) return false;
   for (size_t i = 0; i < text.length(); i++) {
     if (i == colon) continue;
-    if (!isDigitChar(text[i])) return false;
+    if (text[i] < '0' || text[i] > '9') return false;
   }
-  int h = stringToInt(textSubstring(text, 0));
-  textRemove(text, 0, colon + 1);
-  int m = stringToInt(text);
+  int h = stringToInt(text);
+#if defined(ARDUINO)
+  int m = stringToInt(text.substring(colon + 1));
+#else
+  int m = stringToInt(text.substr(colon + 1));
+#endif
   if (h < 0 || h > 23 || m < 0 || m > 59) return false;
   minuteOfDay = (uint16_t)(h * 60 + m);
   return true;
@@ -166,14 +139,11 @@ static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
   while (baseUrl.endsWith("/")) baseUrl.remove(baseUrl.length() - 1);
   if (baseUrl.endsWith("/data/aircraft.json")) return baseUrl;
 #else
-  if (baseUrl.rfind("http://", 0) != 0 && baseUrl.rfind("https://", 0) != 0) {
+  if (!baseUrl.starts_with("http://") && !baseUrl.starts_with("https://")) {
     baseUrl = "http://" + baseUrl;
   }
   while (!baseUrl.empty() && baseUrl.back() == '/') baseUrl.pop_back();
-  const String suffix = "/data/aircraft.json";
-  if (baseUrl.size() >= suffix.size() && baseUrl.compare(baseUrl.size() - suffix.size(), suffix.size(), suffix) == 0) {
-    return baseUrl;
-  }
+  if (baseUrl.ends_with("/data/aircraft.json")) return baseUrl;
 #endif
 
   baseUrl += "/data/aircraft.json";
@@ -219,7 +189,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "HEIGHT") cfg.height = (lowerValue(val) == "metric") ? HGT_METRIC : HGT_FTFL;
   else if (key == "TEMP") cfg.temp = (lowerValue(val) == "f") ? TEMP_F : TEMP_C;
-  else if (key == "RADIUS") cfg.radius = (uint16_t)clampInt(stringToInt(val), 1, MAX_RADIUS_KM);
+  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val), 1, (int)MAX_RADIUS_KM);
   else if (key == "NIGHT_MODE") {
     uint16_t start = 0, end = 0;
     cfg.night = parseNightMode(val, start, end);
@@ -228,10 +198,10 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
       cfg.nightEnd = end;
     }
   }
-  else if (key == "BUSY") cfg.busy = (uint16_t)clampInt(stringToInt(val), 15, 600);
+  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val), 15, 600);
   else if (key == "MAX_REFRESH") {
     int seconds = stringToInt(val);
-    cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)clampInt(seconds, 60, 86400);
+    cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)std::clamp(seconds, 60, 86400);
   }
   else if (key == "DEMO") {
     String v = lowerValue(val);

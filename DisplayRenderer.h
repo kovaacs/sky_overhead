@@ -66,16 +66,11 @@ static inline void drawRouteCodes(const String& fromCode, const String& toCode, 
   epaper.drawString(toCode, x + fromW + ui::ROUTE_GAP + arrowW + ui::ROUTE_GAP, y);
 }
 
-static inline DisplayIconSet displayIcons() {
-  DisplayIconSet icons;
-  icons.planeGlyph = icon::PLANE_LARGE;
-  icons.planeSize = icon::PLANE_LARGE_SIZE;
-  icons.helicopterGlyph = icon::HELICOPTER_LARGE;
-  icons.helicopterSize = icon::HELICOPTER_LARGE_SIZE;
-  icons.clearGlyph = icon::CLOUDY_LARGE;
-  icons.clearSize = icon::CLOUDY_LARGE_SIZE;
-  return icons;
-}
+static constexpr DisplayIconSet DISPLAY_ICONS {
+  icon::PLANE_LARGE, icon::PLANE_LARGE_SIZE,
+  icon::HELICOPTER_LARGE, icon::HELICOPTER_LARGE_SIZE,
+  icon::CLOUDY_LARGE, icon::CLOUDY_LARGE_SIZE
+};
 
 static inline void drawClimatePanel(const Climate& c, TempUnit tempUnit) {
   epaper.setTextDatum(MC_DATUM);
@@ -312,7 +307,7 @@ static inline void drawLive(
   TempUnit tempUnit,
   HeightUnit height,
   SpeedUnit speed,
-  const RetainedAircraftView& retained,
+  const RetainedAircraftState& retained,
   const String& refreshedText,
   const String& qrUrlTemplate,
   const String& sourceText = ""
@@ -325,8 +320,8 @@ static inline void drawLive(
   qrPlane.reg = p.found ? p.reg : retained.lastReg;
   String aircraftUrl = aircraftInfoUrl(qrPlane, qrUrlTemplate);
   drawFrameHeader(batt, aircraftUrl);
-  if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, displayIcons()));
-  else drawLeftColumn(makeRetainedAircraftView(retained, displayIcons()));
+  if (p.found) drawLeftColumn(makeLiveAircraftView(p, height, speed, DISPLAY_ICONS));
+  else drawLeftColumn(makeRetainedAircraftView(retained, height, speed, DISPLAY_ICONS));
 
   drawClimatePanel(clim, tempUnit);
 

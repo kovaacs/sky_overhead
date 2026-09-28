@@ -2,46 +2,6 @@
 
 #include "AdsbParser.h"
 
-template <typename PrimaryFetcher, typename FallbackFetcher>
-static inline FetchResult fetchWithFallback(Plane& best, PrimaryFetcher&& primary, FallbackFetcher&& fallback) {
-  FetchResult result = primary(best);
-  if (result != FETCH_ERROR) return result;
-
-  FetchResult fallbackResult = fallback(best);
-  if (fallbackResult != FETCH_ERROR) return fallbackResult;
-  return result;
-}
-
-template <typename PrimaryFetcher, typename FallbackFetcher>
-static inline FetchResult fetchWithFallbackSource(
-  Plane& best,
-  PrimaryFetcher&& primary,
-  const char* primarySource,
-  FallbackFetcher&& fallback,
-  const char* fallbackSource,
-  String& source
-) {
-  source = "";
-  FetchResult result = primary(best);
-  if (result == FETCH_FOUND) {
-    source = primarySource;
-    return result;
-  }
-  bool hasPrimaryNonError = result != FETCH_ERROR;
-  Plane primaryBest = best;
-
-  FetchResult fallbackResult = fallback(best);
-  if (fallbackResult != FETCH_ERROR) {
-    source = fallbackSource;
-    return fallbackResult;
-  }
-  if (hasPrimaryNonError) {
-    best = primaryBest;
-    source = primarySource;
-  }
-  return result;
-}
-
 template <typename PublicFetcher, typename LocalFetcher>
 static inline FetchResult fetchPublicThenLocalSource(
   Plane& best,

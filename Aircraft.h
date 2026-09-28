@@ -2,7 +2,6 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <string.h>
 
 #if defined(ARDUINO)
 #include <Arduino.h>
@@ -22,33 +21,30 @@ struct Plane {
   bool hasVrate = false;
   bool routeOk = false;
   String callsign, hex, category, typeCode, typeDesc, reg, airline;
-  String fromCity, fromCode, toCity, toCode;
+  String fromCode, toCode;
   double lat = 0, lon = 0, altFt = 0;
   double slantKm = 0;
   double gsKt = 0, vrateFpm = 0;
 };
+
+static inline String trimCopy(String s) {
+#if defined(ARDUINO)
+  s.trim();
+#else
+  const char* ws = " \t\r\n";
+  size_t start = s.find_first_not_of(ws);
+  if (start == String::npos) return "";
+  size_t end = s.find_last_not_of(ws);
+  s = s.substr(start, end - start + 1);
+#endif
+  return s;
+}
 
 static inline bool textHasLength(const String& s) {
 #if defined(ARDUINO)
   return s.length() > 0;
 #else
   return !s.empty();
-#endif
-}
-
-static inline String textSubstring(const String& s, size_t start) {
-#if defined(ARDUINO)
-  return s.substring(start);
-#else
-  return s.substr(start);
-#endif
-}
-
-static inline void textRemove(String& s, size_t index, size_t count) {
-#if defined(ARDUINO)
-  s.remove(index, count);
-#else
-  s.erase(index, count);
 #endif
 }
 
@@ -93,7 +89,7 @@ static inline String normalizeAircraftText(String s) {
   std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
     return static_cast<char>(std::toupper(c));
   });
-  s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+  std::erase(s, ' ');
 #endif
   return s;
 }
@@ -123,20 +119,6 @@ static inline String aircraftIdentity(const Plane& p) {
 
 static inline bool isHelicopter(const Plane& p) {
   return p.category == "A7";
-}
-
-static inline bool isHelicopterCategory(const char* category) {
-  return strcmp(category, "A7") == 0;
-}
-
-static inline String routeCities(const Plane& p) {
-  String cities;
-  if (textHasLength(p.fromCity)) cities = p.fromCity;
-  if (textHasLength(p.toCity)) {
-    if (textHasLength(cities)) cities += " to ";
-    cities += p.toCity;
-  }
-  return cities;
 }
 
 static inline void appendMotionPart(String& text, const String& part) {

@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include "TestHelpers.h"
 #include <iostream>
 #include <string>
 
@@ -6,13 +6,6 @@
 
 // These tests pin the display-facing climate strings. They are deliberately
 // host-only so formatting can be checked without Arduino display libraries.
-static void expectEqual(const char* name, const std::string& actual, const std::string& expected) {
-  if (actual == expected) return;
-
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
 int main() {
   char buf[16];
 

@@ -7,27 +7,24 @@
 constexpr const char* DEFAULT_AIRCRAFT_INFO_URL = "https://www.flightradar24.com/data/aircraft/{reg}";
 constexpr size_t AIRCRAFT_INFO_URL_MAX = 53;
 
-static inline bool aircraftLinkWhitespace(char c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
-
 static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength) {
-  size_t start = 0;
-  size_t end = raw.length();
-  while (start < end && aircraftLinkWhitespace(raw[start])) start++;
-  while (end > start && aircraftLinkWhitespace(raw[end - 1])) end--;
-  if (end - start == 0 || end - start > maxLength) return "";
+  String normalized = trimCopy(raw);
+  if (!textHasLength(normalized) || normalized.length() > maxLength) return "";
+#if defined(ARDUINO)
+  normalized.toLowerCase();
+#else
+  std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char c) {
+    return static_cast<char>(std::tolower(c));
+  });
+#endif
 
-  String normalized;
-  for (size_t i = start; i < end; i++) {
-    char c = raw[i];
+  for (size_t i = 0; i < normalized.length(); i++) {
+    char c = normalized[i];
     bool allowed = (c >= 'A' && c <= 'Z')
                 || (c >= 'a' && c <= 'z')
                 || (c >= '0' && c <= '9')
                 || c == '-';
     if (!allowed) return "";
-    if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
-    normalized += c;
   }
   return normalized;
 }
@@ -65,16 +62,11 @@ static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAUL
   String reg = normalizeAircraftLinkId(p.reg, 12);
   if (!textHasLength(reg)) return "";
 
-  size_t start = 0;
-  size_t end = urlTemplate.length();
-  while (start < end && aircraftLinkWhitespace(urlTemplate[start])) start++;
-  while (end > start && aircraftLinkWhitespace(urlTemplate[end - 1])) end--;
+  urlTemplate = trimCopy(urlTemplate);
 #if defined(ARDUINO)
-  urlTemplate = urlTemplate.substring(start, end);
   if (urlTemplate.indexOf("{reg}") < 0) return "";
   urlTemplate.replace("{reg}", reg);
 #else
-  urlTemplate = urlTemplate.substr(start, end - start);
   size_t token = urlTemplate.find("{reg}");
   if (token == String::npos) return "";
   while (token != String::npos) {

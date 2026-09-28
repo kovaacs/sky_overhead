@@ -4,17 +4,7 @@
 
 #include "../RouteParser.h"
 
-static void expectEqual(const char* name, const String& actual, const String& expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-static void expectTrue(const char* name, bool ok) {
-  if (ok) return;
-  std::cerr << "FAIL " << name << "\n";
-  std::exit(1);
-}
+#include "TestHelpers.h"
 
 int main() {
   JsonDocument doc;
@@ -30,8 +20,6 @@ int main() {
   Plane p;
   applyRouteResponse(doc, p);
   expectEqual("airline", p.airline, "Lufthansa");
-  expectEqual("from city", p.fromCity, "Munich");
-  expectEqual("to city", p.toCity, "Budapest");
   expectEqual("from iata", p.fromCode, "MUC");
   expectEqual("to icao fallback", p.toCode, "LHBP");
   expectTrue("route ok", p.routeOk);
@@ -47,8 +35,6 @@ int main() {
   }])json");
   Plane bad;
   bad.airline = "Existing";
-  bad.fromCity = "Old";
-  bad.toCity = "Old";
   bad.fromCode = "OLD";
   bad.toCode = "OLD";
   bad.routeOk = true;

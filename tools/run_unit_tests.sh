@@ -27,7 +27,7 @@ run_test() {
   name="$(basename "$src" .cpp)"
   out=".build/tests/$name"
 
-  c++ -std=c++17 -Wall -Wextra -Werror -I. -I"$ARDUINO_JSON_INC" "$src" -o "$out"
+  c++ -std=c++20 -Wall -Wextra -Werror -I. -I"$ARDUINO_JSON_INC" "$src" -o "$out"
   "$out"
 }
 

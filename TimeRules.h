@@ -18,13 +18,6 @@ static inline bool isNightMinute(bool nightEnabled, uint16_t startMinute, uint16
   return nowMinute >= startMinute || nowMinute < endMinute;
 }
 
-static inline uint32_t secondsUntilMinuteOfDay(uint16_t minuteOfDay, int hour, int minute, int second) {
-  int now = hour * 3600 + minute * 60 + second;
-  int diff = (int)minuteOfDay * 60 - now;
-  if (diff <= 0) diff += 86400;
-  return (uint32_t)diff;
-}
-
 static inline uint32_t secondsUntilLocalMinuteOfDay(
   uint16_t minuteOfDay,
   time_t now,

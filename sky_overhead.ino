@@ -141,21 +141,18 @@ RTC_DATA_ATTR char     rtcLastSeen[96] = "";   // airline/callsign of last plane
 RTC_DATA_ATTR char     rtcLastFrom[8]  = "";   // origin IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastTo[8]    = "";   // destination IATA/ICAO code
 RTC_DATA_ATTR char     rtcLastRouteKey[40] = ""; // callsign/hex used for retained route
-RTC_DATA_ATTR char     rtcLastCities[96] = ""; // origin/destination city text
 RTC_DATA_ATTR char     rtcLastAircraft[80] = ""; // aircraft type label
 RTC_DATA_ATTR char     rtcLastIdentity[96] = ""; // callsign + tail number
 RTC_DATA_ATTR char     rtcLastAirline[96] = ""; // airline of last plane
 RTC_DATA_ATTR char     rtcLastCategory[8] = ""; // ADS-B category for last icon choice
 RTC_DATA_ATTR char     rtcLastType[64] = "";   // aircraft type/description
 RTC_DATA_ATTR char     rtcLastReg[16]  = "";   // tail number / registration
-RTC_DATA_ATTR char     rtcLastMotion[64] = ""; // altitude/trend/speed text
 RTC_DATA_ATTR char     rtcLastSource[48] = ""; // sources for the retained aircraft view
 RTC_DATA_ATTR double   rtcLastAltFt = 0;
 RTC_DATA_ATTR double   rtcLastGsKt = 0;
 RTC_DATA_ATTR double   rtcLastVrateFpm = 0;
 RTC_DATA_ATTR bool     rtcLastHasGs = false;
 RTC_DATA_ATTR bool     rtcLastHasVrate = false;
-RTC_DATA_ATTR time_t   rtcLastEpoch    = 0;    // when it was last overhead
 RTC_DATA_ATTR time_t   rtcLastRefreshEpoch = 0; // last physical display update
 RTC_DATA_ATTR uint16_t rtcRedraws      = 0;    // for periodic ghost-clean
 RTC_DATA_ATTR uint8_t  rtcDemoStep     = 0;    // rotates demo screens
@@ -191,15 +188,6 @@ static String hhmm() {
   if (!getLocalTime(&t, 800)) return "--:--";
   char b[6];
   strftime(b, sizeof(b), "%H:%M", &t);
-  return String(b);
-}
-
-static String epochHHMM(time_t when) {
-  if (when <= 0) return "";
-  struct tm lt;
-  localtime_r(&when, &lt);
-  char b[6];
-  strftime(b, sizeof(b), "%H:%M", &lt);
   return String(b);
 }
 
@@ -449,8 +437,6 @@ static Plane demoPlane() {
   p.fromCode = "MUC";
   p.toCode = "BUD";
   p.routeOk = true;
-  p.fromCity = "Munich";
-  p.toCity = "Budapest";
   p.typeCode = "A20N";
   p.typeDesc = "Airbus A320neo";
   p.reg = "D-AINB";
@@ -469,21 +455,18 @@ static RetainedAircraftState retainedStateFromRtc() {
   state.lastFrom = String(rtcLastFrom);
   state.lastTo = String(rtcLastTo);
   state.lastRouteKey = String(rtcLastRouteKey);
-  state.lastCities = String(rtcLastCities);
   state.lastAircraft = String(rtcLastAircraft);
   state.lastIdentity = String(rtcLastIdentity);
   state.lastAirline = String(rtcLastAirline);
   state.lastCategory = String(rtcLastCategory);
   state.lastType = String(rtcLastType);
   state.lastReg = String(rtcLastReg);
-  state.lastMotion = String(rtcLastMotion);
   state.lastSource = String(rtcLastSource);
   state.lastAltFt = rtcLastAltFt;
   state.lastGsKt = rtcLastGsKt;
   state.lastVrateFpm = rtcLastVrateFpm;
   state.lastHasGs = rtcLastHasGs;
   state.lastHasVrate = rtcLastHasVrate;
-  state.lastEpoch = rtcLastEpoch;
   return state;
 }
 
@@ -492,43 +475,24 @@ static void writeRetainedStateToRtc(const RetainedAircraftState& state) {
   state.lastFrom.toCharArray(rtcLastFrom, sizeof(rtcLastFrom));
   state.lastTo.toCharArray(rtcLastTo, sizeof(rtcLastTo));
   state.lastRouteKey.toCharArray(rtcLastRouteKey, sizeof(rtcLastRouteKey));
-  state.lastCities.toCharArray(rtcLastCities, sizeof(rtcLastCities));
   state.lastAircraft.toCharArray(rtcLastAircraft, sizeof(rtcLastAircraft));
   state.lastIdentity.toCharArray(rtcLastIdentity, sizeof(rtcLastIdentity));
   state.lastAirline.toCharArray(rtcLastAirline, sizeof(rtcLastAirline));
   state.lastCategory.toCharArray(rtcLastCategory, sizeof(rtcLastCategory));
   state.lastType.toCharArray(rtcLastType, sizeof(rtcLastType));
   state.lastReg.toCharArray(rtcLastReg, sizeof(rtcLastReg));
-  state.lastMotion.toCharArray(rtcLastMotion, sizeof(rtcLastMotion));
   state.lastSource.toCharArray(rtcLastSource, sizeof(rtcLastSource));
   rtcLastAltFt = state.lastAltFt;
   rtcLastGsKt = state.lastGsKt;
   rtcLastVrateFpm = state.lastVrateFpm;
   rtcLastHasGs = state.lastHasGs;
   rtcLastHasVrate = state.lastHasVrate;
-  rtcLastEpoch = state.lastEpoch;
 }
 
 static void rememberLastSeenRtc(const Plane& p, const String& source = "") {
   RetainedAircraftState state = retainedStateFromRtc();
-  rememberLastSeen(state, p, source, cfg.height, cfg.speed, haveClock() ? time(nullptr) : 0);
+  rememberLastSeen(state, p, source);
   writeRetainedStateToRtc(state);
-}
-
-static RetainedAircraftView retainedAircraftView() {
-  RetainedAircraftState state = retainedStateFromRtc();
-  RetainedAircraftView retained;
-  retained.lastSeen = state.lastSeen;
-  retained.lastFrom = state.lastFrom;
-  retained.lastTo = state.lastTo;
-  retained.lastAircraft = state.lastAircraft;
-  retained.lastIdentity = state.lastIdentity;
-  retained.lastAirline = state.lastAirline;
-  retained.lastCategory = state.lastCategory;
-  retained.lastType = state.lastType;
-  retained.lastReg = state.lastReg;
-  retained.lastMotion = retainedMotionText(state, cfg.height, cfg.speed);
-  return retained;
 }
 
 #include "DisplayRenderer.h"
@@ -579,15 +543,15 @@ static void logLiveScreen(
   const Plane& p,
   int batt,
   const Climate& clim,
-  const RetainedAircraftView& retained,
+  const RetainedAircraftState& retained,
   const String& refreshedText,
   const String& sourceText
 ) {
   if (!cfg.sdLog) return;
 
   LeftColumnView left = p.found
-      ? makeLiveAircraftView(p, cfg.height, cfg.speed, displayIcons())
-      : makeRetainedAircraftView(retained, displayIcons());
+      ? makeLiveAircraftView(p, cfg.height, cfg.speed, DISPLAY_ICONS)
+      : makeRetainedAircraftView(retained, cfg.height, cfg.speed, DISPLAY_ICONS);
   JsonDocument entry;
   entry["screen"] = p.found ? "live" : (hasRetainedAircraft(retained) ? "retained" : "clear");
   entry["demo"] = cfg.demo;
@@ -639,7 +603,7 @@ static void runDemoMode() {
   int batt = batteryPct();
   Climate clim = readClimate();
   Plane p = demoPlane();
-  RetainedAircraftView retained;
+  RetainedAircraftState retained;
   String refreshedText = hhmm();
 
   uint8_t step = rtcDemoStep % 2;
@@ -775,7 +739,7 @@ void setup() {
       epaper.fillScreen(TFT_WHITE);
       epaper.update();                             // clear accumulated ghosting
     }
-    RetainedAircraftView retained = retainedAircraftView();
+    RetainedAircraftState retained = retainedStateFromRtc();
     String refreshedText = hhmm();
     drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText,
              runtime.qrUrlTemplate, sourceText);

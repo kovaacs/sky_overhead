@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "Aircraft.h"
+#include "RetainedState.h"
 
 struct DisplayIconSet {
   char planeGlyph;
@@ -23,19 +23,6 @@ struct LeftColumnView {
   String line1;
   String line2;
   String position;
-};
-
-struct RetainedAircraftView {
-  String lastSeen;
-  String lastFrom;
-  String lastTo;
-  String lastAircraft;
-  String lastIdentity;
-  String lastAirline;
-  String lastCategory;
-  String lastType;
-  String lastReg;
-  String lastMotion;
 };
 
 static inline String frameFooterRefreshedText(const String& refreshedText) {
@@ -83,14 +70,16 @@ static inline LeftColumnView makeLiveAircraftView(
   return v;
 }
 
-static inline bool hasRetainedAircraft(const RetainedAircraftView& retained) {
+static inline bool hasRetainedAircraft(const RetainedAircraftState& retained) {
   return textHasLength(retained.lastAircraft)
       || textHasLength(retained.lastIdentity)
       || textHasLength(retained.lastSeen);
 }
 
 static inline LeftColumnView makeRetainedAircraftView(
-  const RetainedAircraftView& retained,
+  const RetainedAircraftState& retained,
+  HeightUnit height,
+  SpeedUnit speed,
   const DisplayIconSet& icons
 ) {
   LeftColumnView v;
@@ -101,7 +90,7 @@ static inline LeftColumnView makeRetainedAircraftView(
     return v;
   }
 
-  const bool helicopter = isHelicopterCategory(retained.lastCategory.c_str());
+  const bool helicopter = retained.lastCategory == "A7";
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
   v.titleFallback = retained.lastAircraft;
@@ -111,7 +100,7 @@ static inline LeftColumnView makeRetainedAircraftView(
   v.line2 = retained.lastAirline;
   v.routeFrom = retained.lastFrom;
   v.routeTo = retained.lastTo;
-  v.position = retained.lastMotion;
+  v.position = retainedMotionText(retained, height, speed);
   cascadeDuplicateLines(v, sameAircraftText);
   return v;
 }

@@ -7,8 +7,6 @@
 
 static inline void applyRouteResponse(const JsonDocument& doc, Plane& p) {
   p.routeOk = false;
-  p.fromCity = "";
-  p.toCity = "";
   p.fromCode = "";
   p.toCode = "";
 
@@ -32,8 +30,6 @@ static inline void applyRouteResponse(const JsonDocument& doc, Plane& p) {
 
   JsonObjectConst origin = airports[0];
   JsonObjectConst destination = airports[airports.size() - 1];
-  p.fromCity = jsonText(origin["location"]);
-  p.toCity = jsonText(destination["location"]);
   p.fromCode = jsonText(origin["iata"]);
   p.toCode = jsonText(destination["iata"]);
   if (!textHasLength(p.fromCode)) p.fromCode = jsonText(origin["icao"]);
