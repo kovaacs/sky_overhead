@@ -4,17 +4,7 @@
 
 #include "../TimeRules.h"
 
-static void expectEqual(const char* name, uint32_t actual, uint32_t expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-static void expectTrue(const char* name, bool ok) {
-  if (ok) return;
-  std::cerr << "FAIL " << name << "\n";
-  std::exit(1);
-}
+#include "TestHelpers.h"
 
 int main() {
   // Same-day quiet hours include the start minute and exclude the end minute.
@@ -33,9 +23,9 @@ int main() {
   expectTrue("same start end means all day", isNightMinute(true, 0, 0, 12 * 60));
 
   // Sleep scheduling rolls forward to the next occurrence of the configured minute.
-  expectEqual("future same day", secondsUntilMinuteOfDay(7 * 60 + 30, 7, 0, 0), 30 * 60);
-  expectEqual("past rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 8, 0, 0), 23 * 60 * 60);
-  expectEqual("exact time rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 7, 0, 0), 24 * 60 * 60);
+  expectEqual("future same day", secondsUntilMinuteOfDay(7 * 60 + 30, 7, 0, 0), 30u * 60);
+  expectEqual("past rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 8, 0, 0), 23u * 60 * 60);
+  expectEqual("exact time rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 7, 0, 0), 24u * 60 * 60);
 
   // A retained RTC epoch must be interpreted in local time even when a wake
   // cannot reach NTP. 06:10 UTC is 08:10 CEST and therefore outside quiet hours.
@@ -64,7 +54,7 @@ int main() {
   spring.tm_hour = 23;
   spring.tm_isdst = -1;
   time_t springEpoch = mktime(&spring);
-  expectEqual("spring DST uses elapsed time", secondsUntilLocalMinuteOfDay(7 * 60, springEpoch, spring), 7 * 60 * 60);
+  expectEqual("spring DST uses elapsed time", secondsUntilLocalMinuteOfDay(7 * 60, springEpoch, spring), 7u * 60 * 60);
 
   struct tm autumn = {};
   autumn.tm_year = 2026 - 1900;
@@ -73,7 +63,7 @@ int main() {
   autumn.tm_hour = 23;
   autumn.tm_isdst = -1;
   time_t autumnEpoch = mktime(&autumn);
-  expectEqual("autumn DST uses elapsed time", secondsUntilLocalMinuteOfDay(7 * 60, autumnEpoch, autumn), 9 * 60 * 60);
+  expectEqual("autumn DST uses elapsed time", secondsUntilLocalMinuteOfDay(7 * 60, autumnEpoch, autumn), 9u * 60 * 60);
 
   std::cout << "time rule tests passed\n";
   return 0;

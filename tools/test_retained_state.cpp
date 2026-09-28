@@ -4,17 +4,7 @@
 
 #include "../RetainedState.h"
 
-static void expectEqual(const char* name, const std::string& actual, const std::string& expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-static void expectTrue(const char* name, bool ok) {
-  if (ok) return;
-  std::cerr << "FAIL " << name << "\n";
-  std::exit(1);
-}
+#include "TestHelpers.h"
 
 static Plane samplePlane() {
   Plane p;

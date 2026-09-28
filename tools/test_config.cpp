@@ -6,23 +6,7 @@
 
 #include "../Config.h"
 
-static void expectEqual(const char* name, int actual, int expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-static void expectEqual(const char* name, const std::string& actual, const std::string& expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-static void expectTrue(const char* name, bool ok) {
-  if (ok) return;
-  std::cerr << "FAIL " << name << "\n";
-  std::exit(1);
-}
+#include "TestHelpers.h"
 
 int main() {
   uint16_t minute = 0;
@@ -49,7 +33,7 @@ int main() {
   expectEqual("temp fahrenheit", cfg.temp, TEMP_F);
   expectEqual("radius constrained high", cfg.radius, MAX_RADIUS_KM);
   expectEqual("busy constrained low", cfg.busy, 15);
-  expectEqual("maximum refresh constrained low", cfg.maxRefresh, 60);
+  expectEqual("maximum refresh constrained low", cfg.maxRefresh, 60u);
   expectTrue("demo true", cfg.demo);
   expectTrue("sd log true", cfg.sdLog);
   expectTrue("night true", cfg.night);
@@ -62,7 +46,7 @@ int main() {
   applyConfigValue(cfg, runtime, "SD_LOG", "off");
   expectEqual("radius constrained low", cfg.radius, 1);
   expectEqual("busy constrained high", cfg.busy, 600);
-  expectEqual("maximum refresh disabled", cfg.maxRefresh, 0);
+  expectEqual("maximum refresh disabled", cfg.maxRefresh, 0u);
   expectTrue("sd log false", !cfg.sdLog);
 
   cfg.nightStart = 123;
@@ -151,7 +135,7 @@ int main() {
   expectEqual("example config radius", exampleCfg.radius, 3);
   expectTrue("example config night mode", exampleCfg.night);
   expectEqual("example config busy interval", exampleCfg.busy, 30);
-  expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0);
+  expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0u);
   expectTrue("example config demo disabled", !exampleCfg.demo);
   expectTrue("example config sd log disabled", !exampleCfg.sdLog);
   expectEqual("example config local feed", exampleRuntime.localAdsbBaseUrl, "http://192.168.1.20:8080");

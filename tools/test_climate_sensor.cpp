@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include "TestHelpers.h"
 #include <iostream>
 
 #include "../ClimateSensor.h"
@@ -24,12 +24,6 @@ struct FakeSensor {
     return 0;
   }
 };
-
-static void expectTrue(const char* name, bool ok) {
-  if (ok) return;
-  std::cerr << "FAIL " << name << "\n";
-  std::exit(1);
-}
 
 int main() {
   int delays = 0;
