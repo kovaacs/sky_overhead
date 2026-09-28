@@ -74,10 +74,6 @@ static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
          runtime.hasLat && runtime.hasLon && runtime.hasAlt;
 }
 
-static inline bool isDigitChar(char c) {
-  return c >= '0' && c <= '9';
-}
-
 static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
   String text = trimCopy(value);
 #if defined(ARDUINO)
@@ -94,7 +90,7 @@ static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
   if (minuteDigits != 2) return false;
   for (size_t i = 0; i < text.length(); i++) {
     if (i == colon) continue;
-    if (!isDigitChar(text[i])) return false;
+    if (text[i] < '0' || text[i] > '9') return false;
   }
   int h = stringToInt(text);
 #if defined(ARDUINO)
