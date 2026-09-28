@@ -550,8 +550,8 @@ static void logLiveScreen(
   if (!cfg.sdLog) return;
 
   LeftColumnView left = p.found
-      ? makeLiveAircraftView(p, cfg.height, cfg.speed, displayIcons())
-      : makeRetainedAircraftView(retained, cfg.height, cfg.speed, displayIcons());
+      ? makeLiveAircraftView(p, cfg.height, cfg.speed, DISPLAY_ICONS)
+      : makeRetainedAircraftView(retained, cfg.height, cfg.speed, DISPLAY_ICONS);
   JsonDocument entry;
   entry["screen"] = p.found ? "live" : (hasRetainedAircraft(retained) ? "retained" : "clear");
   entry["demo"] = cfg.demo;
