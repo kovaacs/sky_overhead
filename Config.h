@@ -77,14 +77,6 @@ static inline int stringToInt(const String& s) {
 #endif
 }
 
-static inline double stringToDouble(const String& s) {
-#if defined(ARDUINO)
-  return s.toDouble();
-#else
-  return std::atof(s.c_str());
-#endif
-}
-
 static inline bool parseDoubleStrict(const String& s, double& value) {
   String text = trimCopy(s);
   if (!textHasLength(text)) return false;

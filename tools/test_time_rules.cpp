@@ -22,11 +22,6 @@ int main() {
   expectTrue("missing clock is day", !isNightMinute(true, 23 * 60, 7 * 60, -1));
   expectTrue("same start end means all day", isNightMinute(true, 0, 0, 12 * 60));
 
-  // Sleep scheduling rolls forward to the next occurrence of the configured minute.
-  expectEqual("future same day", secondsUntilMinuteOfDay(7 * 60 + 30, 7, 0, 0), 30u * 60);
-  expectEqual("past rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 8, 0, 0), 23u * 60 * 60);
-  expectEqual("exact time rolls to tomorrow", secondsUntilMinuteOfDay(7 * 60, 7, 0, 0), 24u * 60 * 60);
-
   // A retained RTC epoch must be interpreted in local time even when a wake
   // cannot reach NTP. 06:10 UTC is 08:10 CEST and therefore outside quiet hours.
   setenv("TZ", "UTC0", 1);

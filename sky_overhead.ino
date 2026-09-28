@@ -191,15 +191,6 @@ static String hhmm() {
   return String(b);
 }
 
-static String epochHHMM(time_t when) {
-  if (when <= 0) return "";
-  struct tm lt;
-  localtime_r(&when, &lt);
-  char b[6];
-  strftime(b, sizeof(b), "%H:%M", &lt);
-  return String(b);
-}
-
 static int curMinuteOfDay() {
   struct tm t;
   if (!getLocalTime(&t, 800)) return -1;
