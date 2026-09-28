@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
@@ -37,12 +38,6 @@ struct RuntimeConfig {
   bool hasLon = false;
   bool hasAlt = false;
 };
-
-static inline int clampInt(int value, int lo, int hi) {
-  if (value < lo) return lo;
-  if (value > hi) return hi;
-  return value;
-}
 
 static inline String lowerValue(String s) {
   s = trimCopy(s);
@@ -198,7 +193,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "HEIGHT") cfg.height = (lowerValue(val) == "metric") ? HGT_METRIC : HGT_FTFL;
   else if (key == "TEMP") cfg.temp = (lowerValue(val) == "f") ? TEMP_F : TEMP_C;
-  else if (key == "RADIUS") cfg.radius = (uint16_t)clampInt(stringToInt(val), 1, MAX_RADIUS_KM);
+  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val), 1, (int)MAX_RADIUS_KM);
   else if (key == "NIGHT_MODE") {
     uint16_t start = 0, end = 0;
     cfg.night = parseNightMode(val, start, end);
@@ -207,10 +202,10 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
       cfg.nightEnd = end;
     }
   }
-  else if (key == "BUSY") cfg.busy = (uint16_t)clampInt(stringToInt(val), 15, 600);
+  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val), 15, 600);
   else if (key == "MAX_REFRESH") {
     int seconds = stringToInt(val);
-    cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)clampInt(seconds, 60, 86400);
+    cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)std::clamp(seconds, 60, 86400);
   }
   else if (key == "DEMO") {
     String v = lowerValue(val);
