@@ -20,8 +20,6 @@ int main() {
   Plane p;
   applyRouteResponse(doc, p);
   expectEqual("airline", p.airline, "Lufthansa");
-  expectEqual("from city", p.fromCity, "Munich");
-  expectEqual("to city", p.toCity, "Budapest");
   expectEqual("from iata", p.fromCode, "MUC");
   expectEqual("to icao fallback", p.toCode, "LHBP");
   expectTrue("route ok", p.routeOk);
@@ -37,8 +35,6 @@ int main() {
   }])json");
   Plane bad;
   bad.airline = "Existing";
-  bad.fromCity = "Old";
-  bad.toCity = "Old";
   bad.fromCode = "OLD";
   bad.toCode = "OLD";
   bad.routeOk = true;

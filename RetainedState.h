@@ -10,21 +10,18 @@ struct RetainedAircraftState {
   String lastFrom;
   String lastTo;
   String lastRouteKey;
-  String lastCities;
   String lastAircraft;
   String lastIdentity;
   String lastAirline;
   String lastCategory;
   String lastType;
   String lastReg;
-  String lastMotion;
   String lastSource;
   double lastAltFt = 0;
   double lastGsKt = 0;
   double lastVrateFpm = 0;
   bool lastHasGs = false;
   bool lastHasVrate = false;
-  long lastEpoch = 0;
 };
 
 static inline bool periodicRefreshDue(uint32_t interval, long now, long lastRefresh) {
@@ -36,10 +33,7 @@ static inline bool periodicRefreshDue(uint32_t interval, long now, long lastRefr
 static inline void rememberLastSeen(
   RetainedAircraftState& state,
   const Plane& p,
-  const String& source,
-  HeightUnit height,
-  SpeedUnit speed,
-  long epoch
+  const String& source
 ) {
   state.lastSeen = textHasLength(p.airline) ? p.airline : p.callsign;
   state.lastAirline = p.airline;
@@ -48,26 +42,22 @@ static inline void rememberLastSeen(
     state.lastRouteKey = key;
     state.lastFrom = p.fromCode;
     state.lastTo = p.toCode;
-    state.lastCities = routeCities(p);
   } else if (key != state.lastRouteKey) {
     state.lastRouteKey = "";
     state.lastFrom = "";
     state.lastTo = "";
-    state.lastCities = "";
   }
   state.lastAircraft = aircraftLabel(p);
   state.lastIdentity = aircraftIdentity(p);
   state.lastCategory = p.category;
   state.lastType = p.typeDesc;
   state.lastReg = p.reg;
-  state.lastMotion = motionText(p, height, speed);
   state.lastAltFt = p.altFt;
   state.lastGsKt = p.gsKt;
   state.lastVrateFpm = p.vrateFpm;
   state.lastHasGs = p.hasGs;
   state.lastHasVrate = p.hasVrate;
   state.lastSource = source;
-  if (epoch > 0) state.lastEpoch = epoch;
 }
 
 static inline String retainedMotionText(

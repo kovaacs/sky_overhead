@@ -16,8 +16,6 @@ static Plane samplePlane() {
   p.fromCode = "MUC";
   p.toCode = "BUD";
   p.routeOk = true;
-  p.fromCity = "Munich";
-  p.toCity = "Budapest";
   p.typeCode = "A20N";
   p.typeDesc = "Airbus A320neo";
   p.reg = "D-AINZ";
@@ -38,15 +36,12 @@ int main() {
 
   RetainedAircraftState state;
   Plane p = samplePlane();
-  rememberLastSeen(state, p, "adsb.lol & adsb.im", HGT_FTFL, SPD_KTS, 1234);
+  rememberLastSeen(state, p, "adsb.lol & adsb.im");
   expectEqual("last seen prefers airline", state.lastSeen, "Lufthansa");
   expectEqual("route key", state.lastRouteKey, "DLH4JA");
-  expectEqual("route cities", state.lastCities, "Munich to Budapest");
   expectEqual("identity", state.lastIdentity, "DLH4JA (D-AINZ)");
-  expectEqual("motion", state.lastMotion, "FL330  ...  climb.  ...  421 kts");
   expectEqual("retained motion reformats", retainedMotionText(state, HGT_METRIC, SPD_KPH), "10058 m  ...  climb.  ...  780 km/h");
   expectEqual("source", state.lastSource, "adsb.lol & adsb.im");
-  expectTrue("epoch stored", state.lastEpoch == 1234);
 
   Plane retained = samplePlane();
   retained.routeOk = false;
@@ -93,7 +88,9 @@ int main() {
     emptyRenderSignature(state, 1),
     aircraftSignature);
 
-  state.lastMotion = "FL350  ...  desc.  ...  460 kts";
+  state.lastAltFt = 35000;
+  state.lastVrateFpm = -1200;
+  state.lastGsKt = 460;
   expectEqual(
     "retained telemetry does not change signature",
     emptyRenderSignature(state, 1),

@@ -37,11 +37,8 @@ int main() {
   expectEqual("descending trend", trendWord(-300), "desc.");
   expectEqual("level trend", trendWord(25), "level");
 
-  // Route helpers support retained-route lookup and empty-sky city summaries.
-  p.fromCity = "Munich";
-  p.toCity = "Budapest";
+  // Route keys support retained-route lookup.
   expectEqual("route key callsign", routeKey(p), "DLH4JA");
-  expectEqual("route cities", routeCities(p), "Munich to Budapest");
 
   p.category = "A7";
   expectTrue("helicopter category", isHelicopter(p));

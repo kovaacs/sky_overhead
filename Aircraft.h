@@ -22,7 +22,7 @@ struct Plane {
   bool hasVrate = false;
   bool routeOk = false;
   String callsign, hex, category, typeCode, typeDesc, reg, airline;
-  String fromCity, fromCode, toCity, toCode;
+  String fromCode, toCode;
   double lat = 0, lon = 0, altFt = 0;
   double slantKm = 0;
   double gsKt = 0, vrateFpm = 0;
@@ -127,16 +127,6 @@ static inline bool isHelicopter(const Plane& p) {
 
 static inline bool isHelicopterCategory(const char* category) {
   return strcmp(category, "A7") == 0;
-}
-
-static inline String routeCities(const Plane& p) {
-  String cities;
-  if (textHasLength(p.fromCity)) cities = p.fromCity;
-  if (textHasLength(p.toCity)) {
-    if (textHasLength(cities)) cities += " to ";
-    cities += p.toCity;
-  }
-  return cities;
 }
 
 static inline void appendMotionPart(String& text, const String& part) {
