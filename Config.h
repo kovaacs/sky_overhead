@@ -101,9 +101,12 @@ static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
     if (i == colon) continue;
     if (!isDigitChar(text[i])) return false;
   }
-  int h = stringToInt(textSubstring(text, 0));
-  textRemove(text, 0, colon + 1);
-  int m = stringToInt(text);
+  int h = stringToInt(text);
+#if defined(ARDUINO)
+  int m = stringToInt(text.substring(colon + 1));
+#else
+  int m = stringToInt(text.substr(colon + 1));
+#endif
   if (h < 0 || h > 23 || m < 0 || m > 59) return false;
   minuteOfDay = (uint16_t)(h * 60 + m);
   return true;

@@ -49,22 +49,6 @@ static inline bool textHasLength(const String& s) {
 #endif
 }
 
-static inline String textSubstring(const String& s, size_t start) {
-#if defined(ARDUINO)
-  return s.substring(start);
-#else
-  return s.substr(start);
-#endif
-}
-
-static inline void textRemove(String& s, size_t index, size_t count) {
-#if defined(ARDUINO)
-  s.remove(index, count);
-#else
-  s.erase(index, count);
-#endif
-}
-
 static inline String altStr(double ft, HeightUnit height) {
   char b[24];
   if (height == HGT_METRIC)
