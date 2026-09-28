@@ -92,7 +92,13 @@ HTTPS certificate verification is disabled in the current firmware to accommodat
 
 ## Build and Contribute
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for source builds, uploads, debug options, tests, hardware notes, and contribution guidelines.
+Docker with Buildx is the recommended way to build and test from source, using the same pinned environment as CI. From the repository root, run:
+
+```bash
+docker buildx bake
+```
+
+Firmware and release packages are exported to `.build/firmware/` and `.build/release/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for Docker setup, flashing, debug options, and contribution guidelines. Native builds are available as an alternative.
 
 ## License
 

@@ -4,8 +4,7 @@ Describe what changed and why.
 
 ## Validation
 
-- [ ] Host unit tests pass (`tools/run_unit_tests.sh`)
-- [ ] Firmware compiles (`tools/build_firmware.sh`)
+- [ ] Tests, firmware build, and release packaging pass (`docker buildx bake`, recommended; note native validation below if used)
 - [ ] Hardware behavior was tested, or is not affected
 - [ ] Documentation and `config.example.txt` were updated if needed
 

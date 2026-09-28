@@ -34,10 +34,18 @@ WORKDIR /workspace/sky_overhead
 COPY tools/setup_arduino_dependencies.sh tools/setup_arduino_dependencies.sh
 RUN sh tools/setup_arduino_dependencies.sh
 
+COPY sketch.yaml ./
+# Resolve profile dependencies before copying application code.
+RUN touch sky_overhead.ino \
+    && arduino-cli compile --show-properties > /dev/null \
+    && rm sky_overhead.ino
+
+COPY tools/generate_icon_font.py tools/generate_icon_font.py
+RUN python3 tools/generate_icon_font.py
+
 FROM toolchain AS source
-COPY *.h *.ino sketch.yaml ./
+COPY *.h *.ino config.example.txt ./
 COPY tools/ tools/
-COPY README.md FLASHING.md config.example.txt THIRD_PARTY_NOTICES.md ./
 
 FROM source AS tests
 RUN sh tools/run_unit_tests.sh
@@ -48,6 +56,7 @@ RUN sh tools/build_firmware.sh --clean --jobs 2 \
       --build-path /tmp/sky-overhead-build --output-dir /out/firmware
 
 FROM firmware-build AS release-build
+COPY README.md FLASHING.md THIRD_PARTY_NOTICES.md ./
 ARG RELEASE_VERSION=v0.0.0
 RUN sh tools/package_release.sh "$RELEASE_VERSION" /out/firmware /out/release \
     && cd /out/release && shasum -a 256 -c SHA256SUMS
