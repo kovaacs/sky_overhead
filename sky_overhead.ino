@@ -234,7 +234,7 @@ static int batteryPct() {
 // Read the onboard SHT4x. After a deep-sleep wake the sensor needs a moment,
 // so we soft-reset and retry once. Returns ok=false if it can't be read.
 static Climate readClimate() {
-  Climate c = readClimateSensor(sht4x, [](int ms) { delay(ms); });
+  Climate c = readClimateSensor(sht4x, delay);
   if (c.ok) LOG("[sht4x] %.1f C  %.0f%%\n", c.tempC, c.hum);
   else LOG("[sht4x] read failed\n");
   return c;
@@ -364,12 +364,7 @@ static FetchResult fetchLocalOverhead(Plane& best) {
 }
 
 static FetchResult fetchOverhead(Plane& best, String& source) {
-  return fetchPublicThenLocalSource(
-    best,
-    [](Plane& out) { return fetchPublicOverhead(out); },
-    [](Plane& out) { return fetchLocalOverhead(out); },
-    source
-  );
+  return fetchPublicThenLocalSource(best, fetchPublicOverhead, fetchLocalOverhead, source);
 }
 
 // tar1090 routeset: route lookup by callsign plus live aircraft position.
