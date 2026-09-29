@@ -114,7 +114,7 @@ def svg_with_stroke_width(svg_path: Path, size: int, stroke_width: str, out_path
 
 def render_icon(
     svg_path: Path, size: int, stroke_width: str, rsvg: str, imagemagick: str
-) -> list[list[int]]:
+) -> bytes:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         svg = tmp_path / "icon.svg"
@@ -124,25 +124,14 @@ def render_icon(
             [rsvg, "-w", str(size), "-h", str(size), "-o", str(png), str(svg)],
             check=True,
         )
-        raw = subprocess.check_output(
-            [imagemagick, str(png), "-alpha", "remove", "-colorspace", "Gray", "-depth", "8", "gray:-"]
+        # 75% threshold matches the previous <192 cutoff; depth 1 emits one
+        # MSB-first packed byte per 8 pixels, the format the font wants.
+        return subprocess.check_output(
+            [
+                imagemagick, str(png), "-alpha", "remove", "-colorspace", "Gray",
+                "-threshold", "75%", "-negate", "-depth", "1", "gray:-"
+            ]
         )
-
-    return [[int(raw[y * size + x] < 192) for x in range(size)] for y in range(size)]
-
-
-def pack_bitmap(pixels: list[list[int]]) -> list[int]:
-    data = []
-    width = len(pixels[0])
-    for row in pixels:
-        for x0 in range(0, width, 8):
-            byte = 0
-            for bit in range(8):
-                x = x0 + bit
-                if x < width and row[x]:
-                    byte |= 0x80 >> bit
-            data.append(byte)
-    return data
 
 
 def main() -> None:
@@ -160,7 +149,7 @@ def main() -> None:
         icon_dir = Path(tmp)
         download_sources(icon_dir)
         for name, filename, char, size, stroke_width in ICONS:
-            data = pack_bitmap(render_icon(icon_dir / filename, size, stroke_width, rsvg, imagemagick))
+            data = render_icon(icon_dir / filename, size, stroke_width, rsvg, imagemagick)
             bitmaps.extend(data)
             y_offset = -min(size, 127)
             glyphs.append((offset, size, size, size + 2, 0, y_offset, char, name))
