@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string_view>
 #include <math.h>
 
 #include "Aircraft.h"
@@ -72,28 +73,17 @@ static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
 
 static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
   String text = trimCopy(value);
-#if defined(ARDUINO)
-  int colon = text.indexOf(':');
-  if (colon < 0) return false;
-  if (text.indexOf(':', colon + 1) >= 0) return false;
-#else
-  size_t colon = text.find(':');
-  if (colon == String::npos) return false;
-  if (text.find(':', colon + 1) != String::npos) return false;
-#endif
+  std::string_view sv(text.c_str(), text.length());
+  size_t colon = sv.find(':');
+  if (colon == std::string_view::npos || sv.find(':', colon + 1) != std::string_view::npos) return false;
   if (colon == 0 || colon > 2) return false;
-  size_t minuteDigits = text.length() - colon - 1;
-  if (minuteDigits != 2) return false;
-  for (size_t i = 0; i < text.length(); i++) {
+  if (sv.length() - colon - 1 != 2) return false;
+  for (size_t i = 0; i < sv.length(); i++) {
     if (i == colon) continue;
-    if (text[i] < '0' || text[i] > '9') return false;
+    if (sv[i] < '0' || sv[i] > '9') return false;
   }
   int h = stringToInt(text.c_str());
-#if defined(ARDUINO)
-  int m = stringToInt(text.substring(colon + 1).c_str());
-#else
-  int m = stringToInt(text.substr(colon + 1).c_str());
-#endif
+  int m = stringToInt(text.c_str() + colon + 1);
   if (h < 0 || h > 23 || m < 0 || m > 59) return false;
   minuteOfDay = (uint16_t)(h * 60 + m);
   return true;
@@ -103,17 +93,11 @@ static inline bool parseNightMode(const String& value, uint16_t& start, uint16_t
   String range = trimCopy(value);
   if (!range.length()) return false;
 
-#if defined(ARDUINO)
-  int dash = range.indexOf('-');
-  if (dash < 0 || range.indexOf('-', dash + 1) >= 0) return false;
-  String startText = trimCopy(range.substring(0, dash));
-  String endText = trimCopy(range.substring(dash + 1));
-#else
-  size_t dash = range.find('-');
-  if (dash == String::npos || range.find('-', dash + 1) != String::npos) return false;
-  String startText = trimCopy(range.substr(0, dash));
-  String endText = trimCopy(range.substr(dash + 1));
-#endif
+  std::string_view sv(range.c_str(), range.length());
+  size_t dash = sv.find('-');
+  if (dash == std::string_view::npos || sv.find('-', dash + 1) != std::string_view::npos) return false;
+  String startText = trimCopy(String(sv.data(), dash));
+  String endText = trimCopy(String(sv.data() + dash + 1, sv.length() - dash - 1));
 
   uint16_t parsedStart = 0;
   uint16_t parsedEnd = 0;
@@ -213,18 +197,11 @@ static inline bool applyConfigLine(Settings& cfg, RuntimeConfig& runtime, String
   line = trimCopy(line);
   if (!line.length() || line[0] == '#') return false;
 
-#if defined(ARDUINO)
-  int eq = line.indexOf('=');
-  if (eq < 0) return false;
-  String key = line.substring(0, eq);
-  String val = line.substring(eq + 1);
-#else
-  size_t eq = line.find('=');
-  if (eq == String::npos) return false;
-  String key = line.substr(0, eq);
-  String val = line.substr(eq + 1);
-#endif
+  std::string_view sv(line.c_str(), line.length());
+  size_t eq = sv.find('=');
+  if (eq == std::string_view::npos) return false;
 
-  applyConfigValue(cfg, runtime, key, val);
+  applyConfigValue(cfg, runtime, String(sv.data(), eq),
+                   String(sv.data() + eq + 1, sv.length() - eq - 1));
   return true;
 }
