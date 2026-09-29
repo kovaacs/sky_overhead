@@ -327,14 +327,6 @@ static bool httpJson(const String& url, JsonDocument& doc, const JsonDocument* f
   return true;
 }
 
-static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
-  return httpJson(url, doc, filter, nullptr);
-}
-
-static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
-  return httpJson(url, doc, nullptr, &body);
-}
-
 static JsonDocument aircraftFilter() {
   JsonDocument filter;
   for (const char* arrayName : {"ac", "aircraft"}) {
@@ -354,7 +346,7 @@ static FetchResult fetchPublicOverhead(Plane& best) {
 
   JsonDocument filter = aircraftFilter();
   JsonDocument doc;
-  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
+  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
 
   FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
   LOG("[adsb] public %s @ %.1f km (3D)\n",
@@ -368,7 +360,7 @@ static FetchResult fetchLocalOverhead(Plane& best) {
 
   JsonDocument filter = aircraftFilter();
   JsonDocument doc;
-  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
+  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
 
   FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
   LOG("[adsb] local %s @ %.1f km (3D)\n",
@@ -398,7 +390,7 @@ static void fetchRoute(Plane& p) {
   serializeJson(bodyDoc, body);
 
   JsonDocument doc;
-  if (!httpPostJson("https://adsb.im/api/0/routeset", body, doc)) {
+  if (!httpJson("https://adsb.im/api/0/routeset", doc, nullptr, &body)) {
     return;
   }
 
