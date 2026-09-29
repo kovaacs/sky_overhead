@@ -108,7 +108,7 @@ static inline void drawClimatePanel(const Climate& c, TempUnit tempUnit) {
 }
 
 static inline void drawFrameHeader(int batt, const String& aircraftUrl = "") {
-  if (textHasLength(aircraftUrl)) drawAircraftQr(aircraftUrl);
+  if (aircraftUrl.length()) drawAircraftQr(aircraftUrl);
   epaper.setFreeFont(&FreeSansBold9pt7b);
   epaper.setTextDatum(MC_DATUM);
   epaper.drawString("SKY OVERHEAD", ui::SCREEN_W / 2, ui::HDR_TEXT_Y);
@@ -120,7 +120,7 @@ static inline void drawFrameFooter(const String& refreshedText, const String& so
   epaper.setFreeFont(&FreeSansBold12pt7b);
   epaper.setTextDatum(MC_DATUM);
   String refreshed = frameFooterRefreshedText(refreshedText);
-  if (!textHasLength(sourceText)) {
+  if (!sourceText.length()) {
     epaper.drawString(fit(refreshed, ui::SCREEN_W - ui::MARGIN * 2), ui::SCREEN_W / 2, ui::FOOTER_Y);
     epaper.setTextDatum(TL_DATUM);
     return;
@@ -174,7 +174,7 @@ static inline void drawLeftTitle(int cx, int y, const LeftColumnView& v) {
   epaper.setFreeFont(&FreeSansBold24pt7b);
   epaper.setTextDatum(MC_DATUM);
   String title = v.title;
-  if (textHasLength(v.titleFallback) && epaper.textWidth(title) > ui::LEFT_TEXT_W) {
+  if (v.titleFallback.length() && epaper.textWidth(title) > ui::LEFT_TEXT_W) {
     title = v.titleFallback;
   }
   epaper.drawString(fit(title, ui::LEFT_TEXT_W), cx, y);

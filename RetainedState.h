@@ -35,7 +35,7 @@ static inline void rememberLastSeen(
   const Plane& p,
   const String& source
 ) {
-  state.lastSeen = textHasLength(p.airline) ? p.airline : p.callsign;
+  state.lastSeen = p.airline.length() ? p.airline : p.callsign;
   state.lastAirline = p.airline;
   String key = routeKey(p);
   if (p.routeOk) {
@@ -79,16 +79,16 @@ static inline String displaySourceForResult(
   const String& currentSource,
   const RetainedAircraftState& retained
 ) {
-  if (!found && textHasLength(retained.lastSource)) return retained.lastSource;
+  if (!found && retained.lastSource.length()) return retained.lastSource;
   return currentSource;
 }
 
 static inline bool applyRetainedRouteIfSame(Plane& p, const RetainedAircraftState& state) {
-  if (p.routeOk || !textHasLength(state.lastRouteKey)) return false;
+  if (p.routeOk || !state.lastRouteKey.length()) return false;
   if (routeKey(p) != state.lastRouteKey) return false;
   p.fromCode = state.lastFrom;
   p.toCode = state.lastTo;
-  return textHasLength(p.fromCode) || textHasLength(p.toCode);
+  return p.fromCode.length() || p.toCode.length();
 }
 
 static inline String foundRenderSignature(const Plane& p, int lowBucket) {
@@ -100,9 +100,9 @@ static inline String foundRenderSignature(const Plane& p, int lowBucket) {
 }
 
 static inline String emptyRenderSignature(const RetainedAircraftState& state, int lowBucket) {
-  if (!textHasLength(state.lastAircraft)
-      && !textHasLength(state.lastIdentity)
-      && !textHasLength(state.lastSeen)) {
+  if (!state.lastAircraft.length()
+      && !state.lastIdentity.length()
+      && !state.lastSeen.length()) {
     char clearSig[16];
     snprintf(clearSig, sizeof(clearSig), "C|%d", lowBucket);
     return String(clearSig);

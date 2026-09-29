@@ -38,9 +38,9 @@ static inline void cascadeDuplicateLines(LeftColumnView& v) {
   const uint8_t lineCount = sizeof(lines) / sizeof(lines[0]);
 
   for (uint8_t i = 0; i < lineCount; i++) {
-    if (!textHasLength(*lines[i])) continue;
+    if (!lines[i]->length()) continue;
     for (uint8_t j = 0; j < i; j++) {
-      if (textHasLength(*lines[j]) && sameAircraftText(*lines[i], *lines[j])) {
+      if (lines[j]->length() && sameAircraftText(*lines[i], *lines[j])) {
         *lines[i] = "";
         break;
       }
@@ -59,7 +59,7 @@ static inline LeftColumnView makeLiveAircraftView(
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
   v.titleFallback = aircraftLabel(p);
-  v.title = textHasLength(p.typeDesc) ? p.typeDesc : v.titleFallback;
+  v.title = p.typeDesc.length() ? p.typeDesc : v.titleFallback;
   v.routeFrom = p.fromCode;
   v.routeTo = p.toCode;
   v.line1 = aircraftIdentity(p);
@@ -70,9 +70,9 @@ static inline LeftColumnView makeLiveAircraftView(
 }
 
 static inline bool hasRetainedAircraft(const RetainedAircraftState& retained) {
-  return textHasLength(retained.lastAircraft)
-      || textHasLength(retained.lastIdentity)
-      || textHasLength(retained.lastSeen);
+  return retained.lastAircraft.length()
+      || retained.lastIdentity.length()
+      || retained.lastSeen.length();
 }
 
 static inline LeftColumnView makeRetainedAircraftView(
@@ -93,9 +93,9 @@ static inline LeftColumnView makeRetainedAircraftView(
   v.glyph = helicopter ? icons.helicopterGlyph : icons.planeGlyph;
   v.glyphSize = helicopter ? icons.helicopterSize : icons.planeSize;
   v.titleFallback = retained.lastAircraft;
-  v.title = textHasLength(retained.lastType) ? retained.lastType : retained.lastAircraft;
-  if (!textHasLength(v.title)) v.title = "Aircraft";
-  v.line1 = textHasLength(retained.lastIdentity) ? retained.lastIdentity : retained.lastSeen;
+  v.title = retained.lastType.length() ? retained.lastType : retained.lastAircraft;
+  if (!v.title.length()) v.title = "Aircraft";
+  v.line1 = retained.lastIdentity.length() ? retained.lastIdentity : retained.lastSeen;
   v.line2 = retained.lastAirline;
   v.routeFrom = retained.lastFrom;
   v.routeTo = retained.lastTo;

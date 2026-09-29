@@ -9,7 +9,7 @@ constexpr size_t AIRCRAFT_INFO_URL_MAX = 53;
 
 static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength) {
   String normalized = trimCopy(raw);
-  if (!textHasLength(normalized) || normalized.length() > maxLength) return "";
+  if (!normalized.length() || normalized.length() > maxLength) return "";
 #if defined(ARDUINO)
   normalized.toLowerCase();
 #else
@@ -60,7 +60,7 @@ static inline bool aircraftLinkHttpUrl(const String& url) {
 
 static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {
   String reg = normalizeAircraftLinkId(p.reg, 12);
-  if (!textHasLength(reg)) return "";
+  if (!reg.length()) return "";
 
   urlTemplate = trimCopy(urlTemplate);
 #if defined(ARDUINO)

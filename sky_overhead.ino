@@ -558,7 +558,7 @@ static void logLiveScreen(
     entry["climate"]["humidity"] = "--";
   }
   entry["footer"]["refreshed"] = frameFooterRefreshedText(refreshedText);
-  if (textHasLength(sourceText)) entry["footer"]["source"] = frameFooterSourceText(sourceText);
+  if (sourceText.length()) entry["footer"]["source"] = frameFooterSourceText(sourceText);
   appendScreenLog(entry);
 }
 

@@ -61,7 +61,7 @@ static inline int stringToInt(const String& s) {
 
 static inline bool parseDoubleStrict(const String& s, double& value) {
   String text = trimCopy(s);
-  if (!textHasLength(text)) return false;
+  if (!text.length()) return false;
   char* end = nullptr;
   double parsed = strtod(text.c_str(), &end);
   if (end == text.c_str() || *end != '\0' || !isfinite(parsed)) return false;
@@ -70,7 +70,7 @@ static inline bool parseDoubleStrict(const String& s, double& value) {
 }
 
 static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
-  return textHasLength(runtime.wifiSSID) && textHasLength(runtime.tzInfo) &&
+  return runtime.wifiSSID.length() && runtime.tzInfo.length() &&
          runtime.hasLat && runtime.hasLon && runtime.hasAlt;
 }
 
@@ -105,7 +105,7 @@ static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
 
 static inline bool parseNightMode(const String& value, uint16_t& start, uint16_t& end) {
   String range = trimCopy(value);
-  if (!textHasLength(range)) return false;
+  if (!range.length()) return false;
 
 #if defined(ARDUINO)
   int dash = range.indexOf('-');
@@ -130,7 +130,7 @@ static inline bool parseNightMode(const String& value, uint16_t& start, uint16_t
 
 static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
   baseUrl = trimCopy(baseUrl);
-  if (!textHasLength(baseUrl)) return "";
+  if (!baseUrl.length()) return "";
 
 #if defined(ARDUINO)
   if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
@@ -215,7 +215,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
 
 static inline bool applyConfigLine(Settings& cfg, RuntimeConfig& runtime, String line) {
   line = trimCopy(line);
-  if (!textHasLength(line) || line[0] == '#') return false;
+  if (!line.length() || line[0] == '#') return false;
 
 #if defined(ARDUINO)
   int eq = line.indexOf('=');
