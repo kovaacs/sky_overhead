@@ -31,10 +31,6 @@ static inline void batteryGlyph(int x, int y, int pct) {
   drawIcon(glyph, x, y - 6, icon::BATTERY_EMPTY_SIZE);
 }
 
-static inline void drawRouteArrow(int x, int y, int len) {
-  drawIconCentered(icon::ARROW_RIGHT, x + len / 2, y, icon::ARROW_RIGHT_SIZE);
-}
-
 static inline void drawAircraftQr(const String& url) {
   uint8_t modules[ui::QR_BUFFER_SIZE];
   QRCode qr;
@@ -61,7 +57,7 @@ static inline void drawRouteCodes(const String& fromCode, const String& toCode, 
   int x = cx - totalW / 2;
   int y = cy - ui::ROUTE_TEXT_HALF_H;
   epaper.drawString(fromCode, x, y);
-  drawRouteArrow(x + fromW + ui::ROUTE_GAP, cy, arrowW);
+  drawIconCentered(icon::ARROW_RIGHT, x + fromW + ui::ROUTE_GAP + arrowW / 2, cy, icon::ARROW_RIGHT_SIZE);
   epaper.setFreeFont(&FreeSansBold24pt7b);
   epaper.drawString(toCode, x + fromW + ui::ROUTE_GAP + arrowW + ui::ROUTE_GAP, y);
 }
