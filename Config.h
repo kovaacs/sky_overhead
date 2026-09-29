@@ -51,12 +51,8 @@ static inline String lowerValue(String s) {
   return s;
 }
 
-static inline int stringToInt(const String& s) {
-#if defined(ARDUINO)
-  return s.toInt();
-#else
-  return std::atoi(s.c_str());
-#endif
+static inline int stringToInt(const char* s) {
+  return (int)strtol(s, nullptr, 10);
 }
 
 static inline bool parseDoubleStrict(const String& s, double& value) {
@@ -92,11 +88,11 @@ static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
     if (i == colon) continue;
     if (text[i] < '0' || text[i] > '9') return false;
   }
-  int h = stringToInt(text);
+  int h = stringToInt(text.c_str());
 #if defined(ARDUINO)
-  int m = stringToInt(text.substring(colon + 1));
+  int m = stringToInt(text.substring(colon + 1).c_str());
 #else
-  int m = stringToInt(text.substr(colon + 1));
+  int m = stringToInt(text.substr(colon + 1).c_str());
 #endif
   if (h < 0 || h > 23 || m < 0 || m > 59) return false;
   minuteOfDay = (uint16_t)(h * 60 + m);
@@ -189,7 +185,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "HEIGHT") cfg.height = (lowerValue(val) == "metric") ? HGT_METRIC : HGT_FTFL;
   else if (key == "TEMP") cfg.temp = (lowerValue(val) == "f") ? TEMP_F : TEMP_C;
-  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val), 1, (int)MAX_RADIUS_KM);
+  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val.c_str()), 1, (int)MAX_RADIUS_KM);
   else if (key == "NIGHT_MODE") {
     uint16_t start = 0, end = 0;
     cfg.night = parseNightMode(val, start, end);
@@ -198,9 +194,9 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
       cfg.nightEnd = end;
     }
   }
-  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val), 15, 600);
+  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val.c_str()), 15, 600);
   else if (key == "MAX_REFRESH") {
-    int seconds = stringToInt(val);
+    int seconds = stringToInt(val.c_str());
     cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)std::clamp(seconds, 60, 86400);
   }
   else if (key == "DEMO") {
