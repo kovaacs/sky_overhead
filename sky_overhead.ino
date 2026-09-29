@@ -292,9 +292,9 @@ static bool connectWiFi() {
   return ok;
 }
 
-// One place for the HTTPS-GET-then-parse-JSON dance. Pass a filter to keep
+// Shared HTTP request and JSON parsing. Pass a filter to keep
 // only the fields you need (smaller, faster parse). Returns true on 200 + parse.
-static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
+static bool httpJson(const String& url, JsonDocument& doc, const JsonDocument* filter, const String* body) {
   WiFiClient plainClient;
   WiFiClientSecure client;
   client.setInsecure();                          // no cert pinning (hobby tradeoff)
@@ -307,13 +307,14 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
     return false;
   }
   http.addHeader("Accept", "application/json");
+  if (body) http.addHeader("Content-Type", "application/json");
   http.setUserAgent(USER_AGENT);
   http.setConnectTimeout(timing::HTTP_TIMEOUT);
   http.setTimeout(timing::HTTP_TIMEOUT);
 
-  int code = http.GET();
+  int code = body ? http.POST(*body) : http.GET();
   if (code != 200) {
-    LOG("[http] GET %d  %s\n", code, url.c_str());
+    LOG("[http] %s %d  %s\n", body ? "POST" : "GET", code, url.c_str());
     http.end();
     return false;
   }
@@ -328,33 +329,12 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
   return true;
 }
 
-static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  if (!http.begin(client, url)) {
-    LOG("[http] begin failed\n");
-    return false;
-  }
-  http.addHeader("Accept", "application/json");
-  http.addHeader("Content-Type", "application/json");
-  http.setUserAgent(USER_AGENT);
-  http.setConnectTimeout(timing::HTTP_TIMEOUT);
-  http.setTimeout(timing::HTTP_TIMEOUT);
+static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
+  return httpJson(url, doc, filter, nullptr);
+}
 
-  int code = http.POST(body);
-  if (code != 200) {
-    LOG("[http] POST %d  %s\n", code, url.c_str());
-    http.end();
-    return false;
-  }
-  DeserializationError err = deserializeJson(doc, http.getStream());
-  http.end();
-  if (err) {
-    LOG("[http] JSON error: %s\n", err.c_str());
-    return false;
-  }
-  return true;
+static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
+  return httpJson(url, doc, nullptr, &body);
 }
 
 static JsonDocument aircraftFilter() {
