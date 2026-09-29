@@ -337,35 +337,30 @@ static JsonDocument aircraftFilter() {
   return filter;
 }
 
+static FetchResult fetchOverheadFrom(const String& url, Plane& best, const char* label) {
+  JsonDocument filter = aircraftFilter();
+  JsonDocument doc;
+  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
+
+  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
+  LOG("[adsb] %s %s @ %.1f km (3D)\n", label,
+      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
+  return result;
+}
+
 // adsb.lol: primary public aircraft source.
 static FetchResult fetchPublicOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
   char url[160];
   snprintf(url, sizeof(url), "https://%s/v2/point/%.5f/%.5f/%d",
            API_HOST, runtime.myLat, runtime.myLon, radiusNm);
-
-  JsonDocument filter = aircraftFilter();
-  JsonDocument doc;
-  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
-
-  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
-  LOG("[adsb] public %s @ %.1f km (3D)\n",
-      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
-  return result;
+  return fetchOverheadFrom(url, best, "public");
 }
 
 static FetchResult fetchLocalOverhead(Plane& best) {
   String url = buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl);
   if (!url.length()) return FETCH_ERROR;
-
-  JsonDocument filter = aircraftFilter();
-  JsonDocument doc;
-  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
-
-  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
-  LOG("[adsb] local %s @ %.1f km (3D)\n",
-      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
-  return result;
+  return fetchOverheadFrom(url, best, "local");
 }
 
 static FetchResult fetchOverhead(Plane& best, String& source) {
