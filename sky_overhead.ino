@@ -281,11 +281,7 @@ static bool connectWiFi() {
   }
   WiFi.mode(WIFI_STA);
   WiFi.begin(runtime.wifiSSID.c_str(), runtime.wifiPass.c_str());
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < timing::WIFI_TIMEOUT) {
-    delay(250);
-  }
-  bool ok = WiFi.status() == WL_CONNECTED;
+  bool ok = WiFi.waitForConnectResult(timing::WIFI_TIMEOUT) == WL_CONNECTED;
   LOG("[wifi] %s\n", ok ? "connected" : "FAILED");
   return ok;
 }
