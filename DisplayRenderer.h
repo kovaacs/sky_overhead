@@ -213,11 +213,8 @@ static inline void drawPositionText(int cx, int y, const String& text) {
     }
     totalW += sepW * (count - 1);
     if (totalW > ui::LEFT_TEXT_W) {
-      String compact;
-      for (int i = 0; i < count; i++) {
-        if (compact.length()) compact += " ";
-        compact += part[i];
-      }
+      String compact = text;
+      compact.replace(sep, " ");
       drawLeftText(cx, y, compact, &FreeSans12pt7b);
       return;
     }
