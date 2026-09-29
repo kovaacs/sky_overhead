@@ -11,13 +11,7 @@ inline void expectEqual(const char* name, const std::string& actual, const std::
   std::exit(1);
 }
 
-inline void expectEqual(const char* name, int actual, int expected) {
-  if (actual == expected) return;
-  std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
-  std::exit(1);
-}
-
-inline void expectEqual(const char* name, uint32_t actual, uint32_t expected) {
+inline void expectEqual(const char* name, int64_t actual, int64_t expected) {
   if (actual == expected) return;
   std::cerr << "FAIL " << name << "\nexpected: " << expected << "\nactual:   " << actual << "\n";
   std::exit(1);
