@@ -74,7 +74,7 @@ static inline FetchResult parseOverheadAircraft(
     best.altFt = altFt;
     best.typeCode = jsonText(a["t"]);
     best.typeDesc = jsonText(a["desc"]);
-    if (!textHasLength(best.typeDesc)) best.typeDesc = best.typeCode;
+    if (!best.typeDesc.length()) best.typeDesc = best.typeCode;
     best.reg = jsonText(a["r"]);
     best.slantKm = slantKm;
     best.hasGs = !a["gs"].isNull();

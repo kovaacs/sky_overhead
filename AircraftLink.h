@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <strings.h>
 
 #include "Aircraft.h"
 
@@ -9,7 +10,7 @@ constexpr size_t AIRCRAFT_INFO_URL_MAX = 53;
 
 static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength) {
   String normalized = trimCopy(raw);
-  if (!textHasLength(normalized) || normalized.length() > maxLength) return "";
+  if (!normalized.length() || normalized.length() > maxLength) return "";
 #if defined(ARDUINO)
   normalized.toLowerCase();
 #else
@@ -29,23 +30,10 @@ static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength
   return normalized;
 }
 
-static inline char aircraftLinkLower(char c) {
-  return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
-}
-
-static inline bool aircraftLinkStartsWith(const String& text, const char* prefix) {
-  size_t i = 0;
-  while (prefix[i]) {
-    if (i >= text.length() || aircraftLinkLower(text[i]) != prefix[i]) return false;
-    i++;
-  }
-  return true;
-}
-
 static inline bool aircraftLinkHttpUrl(const String& url) {
   size_t authorityStart = 0;
-  if (aircraftLinkStartsWith(url, "https://")) authorityStart = 8;
-  else if (aircraftLinkStartsWith(url, "http://")) authorityStart = 7;
+  if (strncasecmp(url.c_str(), "https://", 8) == 0) authorityStart = 8;
+  else if (strncasecmp(url.c_str(), "http://", 7) == 0) authorityStart = 7;
   else return false;
 
   size_t authorityEnd = url.length();
@@ -60,7 +48,7 @@ static inline bool aircraftLinkHttpUrl(const String& url) {
 
 static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {
   String reg = normalizeAircraftLinkId(p.reg, 12);
-  if (!textHasLength(reg)) return "";
+  if (!reg.length()) return "";
 
   urlTemplate = trimCopy(urlTemplate);
 #if defined(ARDUINO)

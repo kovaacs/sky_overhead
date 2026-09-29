@@ -20,7 +20,7 @@ static inline void applyRouteResponse(const JsonDocument& doc, Plane& p) {
 #else
     if (sameAircraftText(airline, "unknown")) airline = "";
 #endif
-    if (textHasLength(airline)) p.airline = airline;
+    if (airline.length()) p.airline = airline;
   }
 
   if (route["plausible"].is<bool>() && !route["plausible"].as<bool>()) return;
@@ -32,7 +32,7 @@ static inline void applyRouteResponse(const JsonDocument& doc, Plane& p) {
   JsonObjectConst destination = airports[airports.size() - 1];
   p.fromCode = jsonText(origin["iata"]);
   p.toCode = jsonText(destination["iata"]);
-  if (!textHasLength(p.fromCode)) p.fromCode = jsonText(origin["icao"]);
-  if (!textHasLength(p.toCode)) p.toCode = jsonText(destination["icao"]);
-  p.routeOk = textHasLength(p.fromCode) || textHasLength(p.toCode);
+  if (!p.fromCode.length()) p.fromCode = jsonText(origin["icao"]);
+  if (!p.toCode.length()) p.toCode = jsonText(destination["icao"]);
+  p.routeOk = p.fromCode.length() || p.toCode.length();
 }

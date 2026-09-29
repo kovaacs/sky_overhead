@@ -87,11 +87,11 @@ namespace timing {
 
 // Screen layout. Panel is 800 x 480. Two columns: aircraft left, climate right.
 namespace ui {
-  constexpr int SCREEN_W = 800, SCREEN_H = 480;
+  constexpr int SCREEN_W = 800;
   constexpr int MARGIN   = 24;
 
   constexpr int HDR_TEXT_Y = 20;
-  constexpr int BATT_X = 740, BATT_Y = 12, BATT_W = 40, BATT_H = 18;
+  constexpr int BATT_X = 740, BATT_Y = 12;
   constexpr int CONTENT_TOP_Y = 40;
   constexpr int DIVIDER_X = 466;
   constexpr int LEFT_TEXT_W = DIVIDER_X - 48;
@@ -109,12 +109,10 @@ namespace ui {
 
   // full-screen sleep view: intentional exception to the two-column content grid
   constexpr int SLEEP_CX = SCREEN_W / 2;
-  constexpr int SLEEP_TEXT_W = SCREEN_W - 2 * MARGIN;
   constexpr int SLEEP_WAKE_Y = 326;
 
   // shared frame geometry
   // right panel = indoor climate (thermometer + droplet)
-  constexpr int PANEL_CX  = 632;     // panel centre
   constexpr int ICON_X    = 548;     // icon centre
   constexpr int NUM_X     = 588;     // big number left edge
   constexpr int TEMP_Y    = 205;     // vertical centre of the temperature row
@@ -292,9 +290,9 @@ static bool connectWiFi() {
   return ok;
 }
 
-// One place for the HTTPS-GET-then-parse-JSON dance. Pass a filter to keep
+// Shared HTTP request and JSON parsing. Pass a filter to keep
 // only the fields you need (smaller, faster parse). Returns true on 200 + parse.
-static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
+static bool httpJson(const String& url, JsonDocument& doc, const JsonDocument* filter, const String* body) {
   WiFiClient plainClient;
   WiFiClientSecure client;
   client.setInsecure();                          // no cert pinning (hobby tradeoff)
@@ -307,13 +305,14 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
     return false;
   }
   http.addHeader("Accept", "application/json");
+  if (body) http.addHeader("Content-Type", "application/json");
   http.setUserAgent(USER_AGENT);
   http.setConnectTimeout(timing::HTTP_TIMEOUT);
   http.setTimeout(timing::HTTP_TIMEOUT);
 
-  int code = http.GET();
+  int code = body ? http.POST(*body) : http.GET();
   if (code != 200) {
-    LOG("[http] GET %d  %s\n", code, url.c_str());
+    LOG("[http] %s %d  %s\n", body ? "POST" : "GET", code, url.c_str());
     http.end();
     return false;
   }
@@ -328,33 +327,12 @@ static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument
   return true;
 }
 
-static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
-  WiFiClientSecure client;
-  client.setInsecure();
-  HTTPClient http;
-  if (!http.begin(client, url)) {
-    LOG("[http] begin failed\n");
-    return false;
-  }
-  http.addHeader("Accept", "application/json");
-  http.addHeader("Content-Type", "application/json");
-  http.setUserAgent(USER_AGENT);
-  http.setConnectTimeout(timing::HTTP_TIMEOUT);
-  http.setTimeout(timing::HTTP_TIMEOUT);
+static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
+  return httpJson(url, doc, filter, nullptr);
+}
 
-  int code = http.POST(body);
-  if (code != 200) {
-    LOG("[http] POST %d  %s\n", code, url.c_str());
-    http.end();
-    return false;
-  }
-  DeserializationError err = deserializeJson(doc, http.getStream());
-  http.end();
-  if (err) {
-    LOG("[http] JSON error: %s\n", err.c_str());
-    return false;
-  }
-  return true;
+static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
+  return httpJson(url, doc, nullptr, &body);
 }
 
 static JsonDocument aircraftFilter() {
@@ -578,7 +556,7 @@ static void logLiveScreen(
     entry["climate"]["humidity"] = "--";
   }
   entry["footer"]["refreshed"] = frameFooterRefreshedText(refreshedText);
-  if (textHasLength(sourceText)) entry["footer"]["source"] = frameFooterSourceText(sourceText);
+  if (sourceText.length()) entry["footer"]["source"] = frameFooterSourceText(sourceText);
   appendScreenLog(entry);
 }
 

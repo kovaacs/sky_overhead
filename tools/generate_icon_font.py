@@ -37,15 +37,7 @@ ICONS = [
 
 
 def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def generation_key() -> str:
-    return sha256(Path(__file__))
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def output_is_current() -> bool:
@@ -55,7 +47,7 @@ def output_is_current() -> bool:
         state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return False
-    return state == {"generation_key": generation_key(), "output_sha256": sha256(OUT)}
+    return state == {"generation_key": sha256(Path(__file__)), "output_sha256": sha256(OUT)}
 
 
 def download_sources(icon_dir: Path) -> None:
@@ -136,14 +128,7 @@ def render_icon(
             [imagemagick, str(png), "-alpha", "remove", "-colorspace", "Gray", "-depth", "8", "gray:-"]
         )
 
-    pixels = []
-    for y in range(size):
-        row = []
-        for x in range(size):
-            shade = raw[y * size + x]
-            row.append(1 if shade < 192 else 0)
-        pixels.append(row)
-    return pixels
+    return [[int(raw[y * size + x] < 192) for x in range(size)] for y in range(size)]
 
 
 def pack_bitmap(pixels: list[list[int]]) -> list[int]:
@@ -226,7 +211,7 @@ const GFXfont SkyIcon24 PROGMEM = {{
     temporary_output.replace(OUT)
 
     STATE_FILE.write_text(
-        json.dumps({"generation_key": generation_key(), "output_sha256": sha256(OUT)}, indent=2) + "\n",
+        json.dumps({"generation_key": sha256(Path(__file__)), "output_sha256": sha256(OUT)}, indent=2) + "\n",
         encoding="utf-8",
     )
     print(f"Generated {OUT.name} from Lucide commit {LUCIDE_COMMIT[:12]}.")

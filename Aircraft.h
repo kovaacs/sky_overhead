@@ -40,14 +40,6 @@ static inline String trimCopy(String s) {
   return s;
 }
 
-static inline bool textHasLength(const String& s) {
-#if defined(ARDUINO)
-  return s.length() > 0;
-#else
-  return !s.empty();
-#endif
-}
-
 static inline String altStr(double ft, HeightUnit height) {
   char b[24];
   if (height == HGT_METRIC)
@@ -74,9 +66,9 @@ static inline const char* trendWord(double fpm) {
 }
 
 static inline String aircraftLabel(const Plane& p) {
-  String s = textHasLength(p.typeCode) ? p.typeCode : p.typeDesc;
-  if (!textHasLength(s)) s = textHasLength(p.callsign) ? p.callsign : p.hex;
-  if (!textHasLength(s)) s = "Aircraft";
+  String s = p.typeCode.length() ? p.typeCode : p.typeDesc;
+  if (!s.length()) s = p.callsign.length() ? p.callsign : p.hex;
+  if (!s.length()) s = "Aircraft";
   return s;
 }
 
@@ -99,21 +91,21 @@ static inline bool sameAircraftText(const String& a, const String& b) {
 }
 
 static inline String routeKey(const Plane& p) {
-  if (textHasLength(p.callsign)) return p.callsign;
+  if (p.callsign.length()) return p.callsign;
   return p.hex;
 }
 
 static inline String aircraftIdentity(const Plane& p) {
-  String s = textHasLength(p.callsign) ? p.callsign : "";
-  if (textHasLength(p.reg)) {
-    if (!textHasLength(s)) s = p.reg;
+  String s = p.callsign.length() ? p.callsign : "";
+  if (p.reg.length()) {
+    if (!s.length()) s = p.reg;
     else if (!sameAircraftText(s, p.reg)) {
       s += " (";
       s += p.reg;
       s += ")";
     }
   }
-  if (!textHasLength(s)) s = p.hex;
+  if (!s.length()) s = p.hex;
   return s;
 }
 
@@ -122,8 +114,8 @@ static inline bool isHelicopter(const Plane& p) {
 }
 
 static inline void appendMotionPart(String& text, const String& part) {
-  if (!textHasLength(part)) return;
-  if (textHasLength(text)) text += "  ...  ";
+  if (!part.length()) return;
+  if (text.length()) text += "  ...  ";
   text += part;
 }
 
