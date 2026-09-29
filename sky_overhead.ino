@@ -87,11 +87,11 @@ namespace timing {
 
 // Screen layout. Panel is 800 x 480. Two columns: aircraft left, climate right.
 namespace ui {
-  constexpr int SCREEN_W = 800, SCREEN_H = 480;
+  constexpr int SCREEN_W = 800;
   constexpr int MARGIN   = 24;
 
   constexpr int HDR_TEXT_Y = 20;
-  constexpr int BATT_X = 740, BATT_Y = 12, BATT_W = 40, BATT_H = 18;
+  constexpr int BATT_X = 740, BATT_Y = 12;
   constexpr int CONTENT_TOP_Y = 40;
   constexpr int DIVIDER_X = 466;
   constexpr int LEFT_TEXT_W = DIVIDER_X - 48;
@@ -109,12 +109,10 @@ namespace ui {
 
   // full-screen sleep view: intentional exception to the two-column content grid
   constexpr int SLEEP_CX = SCREEN_W / 2;
-  constexpr int SLEEP_TEXT_W = SCREEN_W - 2 * MARGIN;
   constexpr int SLEEP_WAKE_Y = 326;
 
   // shared frame geometry
   // right panel = indoor climate (thermometer + droplet)
-  constexpr int PANEL_CX  = 632;     // panel centre
   constexpr int ICON_X    = 548;     // icon centre
   constexpr int NUM_X     = 588;     // big number left edge
   constexpr int TEMP_Y    = 205;     // vertical centre of the temperature row
