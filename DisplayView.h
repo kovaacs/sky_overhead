@@ -33,15 +33,14 @@ static inline String frameFooterSourceText(const String& sourceText) {
   return "Source: " + sourceText;
 }
 
-template <typename View, typename SameText>
-static inline void cascadeDuplicateLines(View& v, SameText sameText) {
-  decltype(&v.title) lines[] = { &v.title, &v.line1, &v.line2, &v.position };
+static inline void cascadeDuplicateLines(LeftColumnView& v) {
+  String* lines[] = { &v.title, &v.line1, &v.line2, &v.position };
   const uint8_t lineCount = sizeof(lines) / sizeof(lines[0]);
 
   for (uint8_t i = 0; i < lineCount; i++) {
     if (!textHasLength(*lines[i])) continue;
     for (uint8_t j = 0; j < i; j++) {
-      if (textHasLength(*lines[j]) && sameText(*lines[i], *lines[j])) {
+      if (textHasLength(*lines[j]) && sameAircraftText(*lines[i], *lines[j])) {
         *lines[i] = "";
         break;
       }
@@ -66,7 +65,7 @@ static inline LeftColumnView makeLiveAircraftView(
   v.line1 = aircraftIdentity(p);
   v.line2 = p.airline;
   v.position = motionText(p, height, speed);
-  cascadeDuplicateLines(v, sameAircraftText);
+  cascadeDuplicateLines(v);
   return v;
 }
 
@@ -101,6 +100,6 @@ static inline LeftColumnView makeRetainedAircraftView(
   v.routeFrom = retained.lastFrom;
   v.routeTo = retained.lastTo;
   v.position = retainedMotionText(retained, height, speed);
-  cascadeDuplicateLines(v, sameAircraftText);
+  cascadeDuplicateLines(v);
   return v;
 }
