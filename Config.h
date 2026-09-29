@@ -1,8 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include <cctype>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string_view>
 #include <math.h>
 
 #include "Aircraft.h"
@@ -41,22 +43,14 @@ struct RuntimeConfig {
 
 static inline String lowerValue(String s) {
   s = trimCopy(s);
-#if defined(ARDUINO)
-  s.toLowerCase();
-#else
   std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
     return static_cast<char>(std::tolower(c));
   });
-#endif
   return s;
 }
 
-static inline int stringToInt(const String& s) {
-#if defined(ARDUINO)
-  return s.toInt();
-#else
-  return std::atoi(s.c_str());
-#endif
+static inline int stringToInt(const char* s) {
+  return (int)strtol(s, nullptr, 10);
 }
 
 static inline bool parseDoubleStrict(const String& s, double& value) {
@@ -76,28 +70,17 @@ static inline bool hasRequiredRuntimeConfig(const RuntimeConfig& runtime) {
 
 static inline bool parseHHMM(const String& value, uint16_t& minuteOfDay) {
   String text = trimCopy(value);
-#if defined(ARDUINO)
-  int colon = text.indexOf(':');
-  if (colon < 0) return false;
-  if (text.indexOf(':', colon + 1) >= 0) return false;
-#else
-  size_t colon = text.find(':');
-  if (colon == String::npos) return false;
-  if (text.find(':', colon + 1) != String::npos) return false;
-#endif
+  std::string_view sv(text.c_str(), text.length());
+  size_t colon = sv.find(':');
+  if (colon == std::string_view::npos || sv.find(':', colon + 1) != std::string_view::npos) return false;
   if (colon == 0 || colon > 2) return false;
-  size_t minuteDigits = text.length() - colon - 1;
-  if (minuteDigits != 2) return false;
-  for (size_t i = 0; i < text.length(); i++) {
+  if (sv.length() - colon - 1 != 2) return false;
+  for (size_t i = 0; i < sv.length(); i++) {
     if (i == colon) continue;
-    if (text[i] < '0' || text[i] > '9') return false;
+    if (sv[i] < '0' || sv[i] > '9') return false;
   }
-  int h = stringToInt(text);
-#if defined(ARDUINO)
-  int m = stringToInt(text.substring(colon + 1));
-#else
-  int m = stringToInt(text.substr(colon + 1));
-#endif
+  int h = stringToInt(text.c_str());
+  int m = stringToInt(text.c_str() + colon + 1);
   if (h < 0 || h > 23 || m < 0 || m > 59) return false;
   minuteOfDay = (uint16_t)(h * 60 + m);
   return true;
@@ -107,17 +90,11 @@ static inline bool parseNightMode(const String& value, uint16_t& start, uint16_t
   String range = trimCopy(value);
   if (!range.length()) return false;
 
-#if defined(ARDUINO)
-  int dash = range.indexOf('-');
-  if (dash < 0 || range.indexOf('-', dash + 1) >= 0) return false;
-  String startText = trimCopy(range.substring(0, dash));
-  String endText = trimCopy(range.substring(dash + 1));
-#else
-  size_t dash = range.find('-');
-  if (dash == String::npos || range.find('-', dash + 1) != String::npos) return false;
-  String startText = trimCopy(range.substr(0, dash));
-  String endText = trimCopy(range.substr(dash + 1));
-#endif
+  std::string_view sv(range.c_str(), range.length());
+  size_t dash = sv.find('-');
+  if (dash == std::string_view::npos || sv.find('-', dash + 1) != std::string_view::npos) return false;
+  String startText = trimCopy(String(sv.data(), dash));
+  String endText = trimCopy(String(sv.data() + dash + 1, sv.length() - dash - 1));
 
   uint16_t parsedStart = 0;
   uint16_t parsedEnd = 0;
@@ -152,13 +129,9 @@ static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
 
 static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, String key, String val) {
   key = trimCopy(key);
-#if defined(ARDUINO)
-  key.toUpperCase();
-#else
   std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
     return static_cast<char>(std::toupper(c));
   });
-#endif
   val = trimCopy(val);
 
   if      (key == "SSID") runtime.wifiSSID = val;
@@ -189,7 +162,7 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
   }
   else if (key == "HEIGHT") cfg.height = (lowerValue(val) == "metric") ? HGT_METRIC : HGT_FTFL;
   else if (key == "TEMP") cfg.temp = (lowerValue(val) == "f") ? TEMP_F : TEMP_C;
-  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val), 1, (int)MAX_RADIUS_KM);
+  else if (key == "RADIUS") cfg.radius = (uint16_t)std::clamp(stringToInt(val.c_str()), 1, (int)MAX_RADIUS_KM);
   else if (key == "NIGHT_MODE") {
     uint16_t start = 0, end = 0;
     cfg.night = parseNightMode(val, start, end);
@@ -198,9 +171,9 @@ static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, Strin
       cfg.nightEnd = end;
     }
   }
-  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val), 15, 600);
+  else if (key == "BUSY") cfg.busy = (uint16_t)std::clamp(stringToInt(val.c_str()), 15, 600);
   else if (key == "MAX_REFRESH") {
-    int seconds = stringToInt(val);
+    int seconds = stringToInt(val.c_str());
     cfg.maxRefresh = seconds <= 0 ? 0 : (uint32_t)std::clamp(seconds, 60, 86400);
   }
   else if (key == "DEMO") {
@@ -217,18 +190,11 @@ static inline bool applyConfigLine(Settings& cfg, RuntimeConfig& runtime, String
   line = trimCopy(line);
   if (!line.length() || line[0] == '#') return false;
 
-#if defined(ARDUINO)
-  int eq = line.indexOf('=');
-  if (eq < 0) return false;
-  String key = line.substring(0, eq);
-  String val = line.substring(eq + 1);
-#else
-  size_t eq = line.find('=');
-  if (eq == String::npos) return false;
-  String key = line.substr(0, eq);
-  String val = line.substr(eq + 1);
-#endif
+  std::string_view sv(line.c_str(), line.length());
+  size_t eq = sv.find('=');
+  if (eq == std::string_view::npos) return false;
 
-  applyConfigValue(cfg, runtime, key, val);
+  applyConfigValue(cfg, runtime, String(sv.data(), eq),
+                   String(sv.data() + eq + 1, sv.length() - eq - 1));
   return true;
 }

@@ -234,7 +234,7 @@ static int batteryPct() {
 // Read the onboard SHT4x. After a deep-sleep wake the sensor needs a moment,
 // so we soft-reset and retry once. Returns ok=false if it can't be read.
 static Climate readClimate() {
-  Climate c = readClimateSensor(sht4x, [](int ms) { delay(ms); });
+  Climate c = readClimateSensor(sht4x, delay);
   if (c.ok) LOG("[sht4x] %.1f C  %.0f%%\n", c.tempC, c.hum);
   else LOG("[sht4x] read failed\n");
   return c;
@@ -281,11 +281,7 @@ static bool connectWiFi() {
   }
   WiFi.mode(WIFI_STA);
   WiFi.begin(runtime.wifiSSID.c_str(), runtime.wifiPass.c_str());
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < timing::WIFI_TIMEOUT) {
-    delay(250);
-  }
-  bool ok = WiFi.status() == WL_CONNECTED;
+  bool ok = WiFi.waitForConnectResult(timing::WIFI_TIMEOUT) == WL_CONNECTED;
   LOG("[wifi] %s\n", ok ? "connected" : "FAILED");
   return ok;
 }
@@ -327,14 +323,6 @@ static bool httpJson(const String& url, JsonDocument& doc, const JsonDocument* f
   return true;
 }
 
-static bool httpGetJson(const String& url, JsonDocument& doc, const JsonDocument* filter = nullptr) {
-  return httpJson(url, doc, filter, nullptr);
-}
-
-static bool httpPostJson(const String& url, const String& body, JsonDocument& doc) {
-  return httpJson(url, doc, nullptr, &body);
-}
-
 static JsonDocument aircraftFilter() {
   JsonDocument filter;
   for (const char* arrayName : {"ac", "aircraft"}) {
@@ -345,44 +333,34 @@ static JsonDocument aircraftFilter() {
   return filter;
 }
 
+static FetchResult fetchOverheadFrom(const String& url, Plane& best, const char* label) {
+  JsonDocument filter = aircraftFilter();
+  JsonDocument doc;
+  if (!httpJson(url, doc, &filter, nullptr)) return FETCH_ERROR;
+
+  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
+  LOG("[adsb] %s %s @ %.1f km (3D)\n", label,
+      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
+  return result;
+}
+
 // adsb.lol: primary public aircraft source.
 static FetchResult fetchPublicOverhead(Plane& best) {
   int radiusNm = constrain((int)ceil(cfg.radius / 1.852), 1, 250);
   char url[160];
   snprintf(url, sizeof(url), "https://%s/v2/point/%.5f/%.5f/%d",
            API_HOST, runtime.myLat, runtime.myLon, radiusNm);
-
-  JsonDocument filter = aircraftFilter();
-  JsonDocument doc;
-  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
-
-  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
-  LOG("[adsb] public %s @ %.1f km (3D)\n",
-      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
-  return result;
+  return fetchOverheadFrom(url, best, "public");
 }
 
 static FetchResult fetchLocalOverhead(Plane& best) {
   String url = buildLocalAdsbAircraftUrl(runtime.localAdsbBaseUrl);
   if (!url.length()) return FETCH_ERROR;
-
-  JsonDocument filter = aircraftFilter();
-  JsonDocument doc;
-  if (!httpGetJson(url, doc, &filter)) return FETCH_ERROR;
-
-  FetchResult result = parseOverheadAircraft(doc, runtime.myLat, runtime.myLon, runtime.myAltM, best, cfg.radius);
-  LOG("[adsb] local %s @ %.1f km (3D)\n",
-      best.found ? best.callsign.c_str() : "nothing", best.found ? best.slantKm : 0.0);
-  return result;
+  return fetchOverheadFrom(url, best, "local");
 }
 
 static FetchResult fetchOverhead(Plane& best, String& source) {
-  return fetchPublicThenLocalSource(
-    best,
-    [](Plane& out) { return fetchPublicOverhead(out); },
-    [](Plane& out) { return fetchLocalOverhead(out); },
-    source
-  );
+  return fetchPublicThenLocalSource(best, fetchPublicOverhead, fetchLocalOverhead, source);
 }
 
 // tar1090 routeset: route lookup by callsign plus live aircraft position.
@@ -398,7 +376,7 @@ static void fetchRoute(Plane& p) {
   serializeJson(bodyDoc, body);
 
   JsonDocument doc;
-  if (!httpPostJson("https://adsb.im/api/0/routeset", body, doc)) {
+  if (!httpJson("https://adsb.im/api/0/routeset", doc, nullptr, &body)) {
     return;
   }
 
@@ -601,8 +579,7 @@ static void runDemoMode() {
   rtcDemoStep = (step + 1) % 2;
   snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
   LOG("[demo] drew step %u\n", step);
-  uint32_t demoSleep = cfg.busy < 30 ? cfg.busy : 30;
-  if (demoSleep < 15) demoSleep = 15;
+  uint32_t demoSleep = constrain(cfg.busy, 15, 30);
   goSleep(demoSleep);
 }
 
@@ -703,12 +680,10 @@ void setup() {
   sig += String((int)cfg.height);
   sig += "|";
   sig += String((int)cfg.speed);
-  Plane qrPlane;
   RetainedAircraftState qrState = retainedStateFromRtc();
-  qrPlane.reg = got ? p.reg : qrState.lastReg;
   char qrSig[16];
   snprintf(qrSig, sizeof(qrSig), "|QR|%08lx",
-           (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(qrPlane, runtime.qrUrlTemplate)));
+           (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(got ? p.reg : qrState.lastReg, runtime.qrUrlTemplate)));
   sig += qrSig;
 
   time_t now = currentEpoch();
