@@ -579,8 +579,7 @@ static void runDemoMode() {
   rtcDemoStep = (step + 1) % 2;
   snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
   LOG("[demo] drew step %u\n", step);
-  uint32_t demoSleep = cfg.busy < 30 ? cfg.busy : 30;
-  if (demoSleep < 15) demoSleep = 15;
+  uint32_t demoSleep = constrain(cfg.busy, 15, 30);
   goSleep(demoSleep);
 }
 
