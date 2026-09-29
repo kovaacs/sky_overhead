@@ -8,8 +8,9 @@ From the [latest GitHub Release](https://github.com/kovaacs/sky_overhead/release
 
 - `sky-overhead-<VERSION>-merged.bin`
 - `SHA256SUMS`
+- `sky-overhead-<VERSION>-firmware.zip`, for the version-matched `config.example.txt`
 
-The firmware ZIP contains the separate Arduino build outputs, this guide, and `config.example.txt`. Most users only need the merged binary.
+The firmware ZIP contains the separate Arduino build outputs, this guide, and `config.example.txt`. Only the merged binary is needed for flashing; extract the ZIP for SD-card setup. If you already have a working `config.txt`, you can keep it.
 
 ## Verify the Download
 
@@ -70,10 +71,7 @@ If no port appears, press RESET once and run the command again.
 Replace `<PORT>` and `<VERSION>` with your serial port and downloaded release version:
 
 ```bash
-esptool --chip esp32s3 \
-  --port <PORT> \
-  --baud 460800 \
-  write-flash 0x0 sky-overhead-<VERSION>-merged.bin
+esptool --chip esp32s3 --port <PORT> --baud 460800 write-flash 0x0 sky-overhead-<VERSION>-merged.bin
 ```
 
 The merged image contains the bootloader, partition table, and application. Do not run a separate `erase-flash` command: `write-flash` erases the flash sectors covered by the 8 MB merged image automatically.
@@ -82,6 +80,12 @@ If esptool cannot connect, hold BOOT, tap RESET, release BOOT, and run the comma
 
 ## Configure the Device
 
-Copy `config.example.txt` to `config.txt` at the root of a FAT-formatted microSD card. Replace the placeholder Wi-Fi, location, altitude, and timezone values, then insert the card before starting the device.
+Copy [`config.example.txt`](config.example.txt) from the extracted release ZIP to `config.txt` at the root of a FAT-formatted microSD card. Replace the placeholder Wi-Fi, location, altitude, and timezone values, then insert the card before starting the device.
 
 See the README's [configuration](README.md#configure) and [privacy](README.md#data-and-privacy) sections for supported settings and data-sharing considerations.
+
+### If the First Screen Does Not Appear
+
+Check that the card is FAT-formatted and the file is `/config.txt`, not inside a folder or named `config.txt.txt`. Set a nonempty `SSID` and `TZ`, valid numeric `LAT`/`LON`, and numeric `ALT`; check `PASS` for password-protected Wi-Fi.
+
+Missing or invalid required settings prevent Wi-Fi connection without drawing an error screen. Failed Wi-Fi or aircraft requests also leave the old screen (or a blank display) in place. After correcting and reinserting the card, press RESET or wait for the next retry: failures are followed by a 45-second sleep, plus connection/request time. Quiet hours show a sleep screen until their configured end time.

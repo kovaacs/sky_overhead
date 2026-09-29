@@ -3,7 +3,8 @@
 # Network
 SSID=your-wifi-name
 PASS=your-wifi-password
-LOCAL_ADSB_URL=http://192.168.1.20:8080
+# Optional local receiver fallback; for example http://192.168.1.20:8080
+LOCAL_ADSB_URL=
 
 # Location (example: central Berlin)
 LAT=52.5200
@@ -19,14 +20,15 @@ TZ=CET-1CEST,M3.5.0,M10.5.0/3
 QR_URL=https://www.flightradar24.com/data/aircraft/{reg}
 
 # Units (SPEED: kph|mph|kts  HEIGHT: ftfl|metric  TEMP: c|f)
-SPEED=kts
+SPEED=kph
 HEIGHT=ftfl
 TEMP=c
 
-# Display and refresh behavior
-RADIUS=3
-NIGHT_MODE=23:00-07:00
-BUSY=30
+# Display and refresh behavior (firmware defaults)
+RADIUS=30
+# Empty disables quiet hours; example: 23:00-07:00. Equal endpoints mean all day.
+NIGHT_MODE=
+BUSY=60
 MAX_REFRESH=0
 
 # Optional modes (0=off, 1=on)
