@@ -7,6 +7,9 @@
 #include "TestHelpers.h"
 
 int main() {
+  expectTrue("mixed-case HTTP scheme", aircraftLinkHttpUrl("hTtP://example.com/"));
+  expectTrue("reject truncated scheme", !aircraftLinkHttpUrl("https:"));
+  expectTrue("reject empty URL", !aircraftLinkHttpUrl(""));
   Plane p;
   p.reg = "D-AINB";
   expectEqual("default registration link", aircraftInfoUrl(p),

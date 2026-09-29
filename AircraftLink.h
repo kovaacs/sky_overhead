@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <strings.h>
 
 #include "Aircraft.h"
 
@@ -29,23 +30,10 @@ static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength
   return normalized;
 }
 
-static inline char aircraftLinkLower(char c) {
-  return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c;
-}
-
-static inline bool aircraftLinkStartsWith(const String& text, const char* prefix) {
-  size_t i = 0;
-  while (prefix[i]) {
-    if (i >= text.length() || aircraftLinkLower(text[i]) != prefix[i]) return false;
-    i++;
-  }
-  return true;
-}
-
 static inline bool aircraftLinkHttpUrl(const String& url) {
   size_t authorityStart = 0;
-  if (aircraftLinkStartsWith(url, "https://")) authorityStart = 8;
-  else if (aircraftLinkStartsWith(url, "http://")) authorityStart = 7;
+  if (strncasecmp(url.c_str(), "https://", 8) == 0) authorityStart = 8;
+  else if (strncasecmp(url.c_str(), "http://", 7) == 0) authorityStart = 7;
   else return false;
 
   size_t authorityEnd = url.length();
