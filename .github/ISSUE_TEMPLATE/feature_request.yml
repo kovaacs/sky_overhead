@@ -14,9 +14,7 @@ body:
     id: proposal
     attributes:
       label: Proposed change
-      description: Describe the behavior or interface you would like.
-    validations:
-      required: true
+      description: If you have a solution in mind, describe the behavior or interface you would like (optional).
 
   - type: textarea
     id: alternatives

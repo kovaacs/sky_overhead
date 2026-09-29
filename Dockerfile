@@ -56,7 +56,7 @@ RUN sh tools/build_firmware.sh --clean --jobs 2 \
       --build-path /tmp/sky-overhead-build --output-dir /out/firmware
 
 FROM firmware-build AS release-build
-COPY README.md FLASHING.md THIRD_PARTY_NOTICES.md ./
+COPY README.md FLASHING.md THIRD_PARTY_NOTICES.md LICENSE ./
 ARG RELEASE_VERSION=v0.0.0
 RUN sh tools/package_release.sh "$RELEASE_VERSION" /out/firmware /out/release \
     && cd /out/release && shasum -a 256 -c SHA256SUMS

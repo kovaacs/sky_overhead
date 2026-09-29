@@ -129,16 +129,16 @@ int main() {
   expectTrue("example config contains every supported key", exampleKeys == supportedKeys);
   expectTrue("example config has required values", hasRequiredRuntimeConfig(exampleRuntime));
   expectEqual("example config ssid", exampleRuntime.wifiSSID, "your-wifi-name");
-  expectEqual("example config speed", exampleCfg.speed, SPD_KTS);
+  expectEqual("example config speed", exampleCfg.speed, SPD_KPH);
   expectEqual("example config height", exampleCfg.height, HGT_FTFL);
   expectEqual("example config temperature", exampleCfg.temp, TEMP_C);
-  expectEqual("example config radius", exampleCfg.radius, 3);
-  expectTrue("example config night mode", exampleCfg.night);
-  expectEqual("example config busy interval", exampleCfg.busy, 30);
+  expectEqual("example config radius", exampleCfg.radius, 30);
+  expectTrue("example config night mode disabled", !exampleCfg.night);
+  expectEqual("example config busy interval", exampleCfg.busy, 60);
   expectEqual("example config maximum refresh", exampleCfg.maxRefresh, 0u);
   expectTrue("example config demo disabled", !exampleCfg.demo);
   expectTrue("example config sd log disabled", !exampleCfg.sdLog);
-  expectEqual("example config local feed", exampleRuntime.localAdsbBaseUrl, "http://192.168.1.20:8080");
+  expectEqual("example config local feed disabled", exampleRuntime.localAdsbBaseUrl, "");
   expectEqual("example config QR URL", exampleRuntime.qrUrlTemplate,
               "https://www.flightradar24.com/data/aircraft/{reg}");
 

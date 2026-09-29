@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 <p align="center">
-  <img src="assets/sky-overhead-display.jpeg" width="640" alt="Sky Overhead running on a Seeed reTerminal E1001, displaying a nearby aircraft alongside temperature and humidity readings">
+  <img src="https://raw.githubusercontent.com/kovaacs/sky_overhead/main/assets/sky-overhead-display.jpeg" width="640" alt="Sky Overhead running on a Seeed reTerminal E1001, displaying a nearby aircraft alongside temperature and humidity readings">
 </p>
 
 Sky Overhead turns a Seeed reTerminal E1001 into a quiet wall display for nearby aircraft. It shows the nearest aircraft's type, callsign, registration, airline, route, altitude, trend, and speed alongside indoor temperature and humidity.
@@ -39,24 +39,24 @@ Copy [`config.example.txt`](config.example.txt) to `/config.txt` at the root of 
 Required settings:
 
 - `SSID`: Wi-Fi network name
-- `LAT`, `LON`: observer location in decimal degrees
+- `LAT`, `LON`: observer location in decimal degrees, within -90 to 90 and -180 to 180 respectively
 - `ALT`: observer altitude in meters above sea level
 - `TZ`: POSIX timezone string used for local timestamps and quiet hours
 
-Optional settings:
+Optional settings (defaults apply when a key is omitted):
 
 - `PASS`: Wi-Fi password; leave empty for an open network
-- `SPEED`: `kph`, `mph`, or `kts`
-- `HEIGHT`: `ftfl` or `metric`
-- `TEMP`: `c` or `f`
-- `RADIUS`: aircraft search radius in kilometers, from 1 to 463
-- `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; omit or leave empty to disable
-- `BUSY`: normal sleep interval in seconds, from 15 to 600
-- `MAX_REFRESH`: time in seconds after which the next wake forces a display update; `0` disables forced updates, while positive values range from 60 to 86400
-- `LOCAL_ADSB_URL`: optional readsb/tar1090 base URL, such as `http://192.168.1.20:8080`; the firmware appends `/data/aircraft.json`
-- `QR_URL`: aircraft-information URL template containing `{reg}`; leave empty to hide the QR code
+- `SPEED`: `kph` (default), `mph`, or `kts`
+- `HEIGHT`: `ftfl` (default) or `metric`
+- `TEMP`: `c` (default) or `f`
+- `RADIUS`: horizontal aircraft search radius in kilometers, from 1 to 463; default `30`
+- `NIGHT_MODE`: quiet-hours range in `HH:MM-HH:MM`; disabled by default. Omit or leave empty to disable. Daytime and overnight ranges work; equal start and end times mean quiet hours all day.
+- `BUSY`: normal sleep interval in seconds, from 15 to 600; default `60`
+- `MAX_REFRESH`: time in seconds after which the next wake forces a display update; `0` (default) disables forced updates, while positive values range from 60 to 86400
+- `LOCAL_ADSB_URL`: optional readsb/tar1090 base URL, such as `http://192.168.1.20:8080`; empty (disabled) by default. The firmware appends `/data/aircraft.json`.
+- `QR_URL`: HTTP(S) aircraft-information URL template containing `{reg}`; default `https://www.flightradar24.com/data/aircraft/{reg}`. Leave empty to hide the QR code. The generated URL must fit within 53 bytes after substituting the registration.
 
-Defaults are provided for units, radius, and sleep interval. `QR_URL` defaults to `https://www.flightradar24.com/data/aircraft/{reg}`. The QR code is hidden when no registration is available or the generated URL is too long. Prefer a DHCP-reserved address over an `.local` hostname for a local ADS-B receiver.
+The QR code is hidden when no usable registration is available or the generated URL is invalid or too long. Prefer a DHCP-reserved address over an `.local` hostname for a local ADS-B receiver.
 
 Example timezone values:
 
@@ -67,10 +67,12 @@ Example timezone values:
 
 - The left side shows the nearest current aircraft, or the last-seen aircraft when no current aircraft is found.
 - The right side shows indoor temperature and humidity.
-- Quiet hours show a sleep screen and pause aircraft checks until morning.
+- Quiet hours show a sleep screen and pause aircraft checks until the configured end time.
 - The footer shows the local refresh time and the sources used for the displayed data.
 - Missing aircraft fields are omitted rather than leaving blank rows.
 - A QR code links to information about the displayed live or retained aircraft when its registration is available.
+
+Within the horizontal search radius, the nearest aircraft is selected by 3D distance, using `ALT` to account for the observer's elevation. Aircraft reported on the ground, without usable position or altitude, or with positions reported as older than 120 seconds are excluded.
 
 The screen is intentionally not updated second by second. A different aircraft or other static display change causes a redraw, while telemetry and climate changes update with the next redraw. `MAX_REFRESH` can ensure periodic updates, but it does not shorten `BUSY` sleep intervals or interrupt quiet hours.
 
@@ -98,7 +100,7 @@ Docker with Buildx is the recommended way to build and test from source, using t
 docker buildx bake
 ```
 
-Firmware and release packages are exported to `.build/firmware/` and `.build/release/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for Docker setup, flashing, debug options, and contribution guidelines. Native builds are available as an alternative.
+Firmware and release packages are exported to `.build/firmware/` and `.build/release/`. See [CONTRIBUTING.md](https://github.com/kovaacs/sky_overhead/blob/main/CONTRIBUTING.md) for Docker setup, flashing, debug options, and contribution guidelines. Native builds are available as an alternative.
 
 ## License
 
