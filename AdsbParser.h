@@ -60,7 +60,7 @@ static inline FetchResult parseOverheadAircraft(
     double lat = a["lat"], lon = a["lon"];
     double groundKm = haversineKm(observerLat, observerLon, lat, lon);
     double heightKm = (altFt * 0.3048 - observerAltM) / 1000.0;
-    double slantKm  = sqrt(groundKm * groundKm + heightKm * heightKm);
+    double slantKm  = hypot(groundKm, heightKm);
     if (maxGroundKm > 0 && groundKm > maxGroundKm) continue;
     if (slantKm >= bestSlant) continue;
 
