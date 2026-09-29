@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cctype>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string_view>
@@ -42,13 +43,9 @@ struct RuntimeConfig {
 
 static inline String lowerValue(String s) {
   s = trimCopy(s);
-#if defined(ARDUINO)
-  s.toLowerCase();
-#else
   std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
     return static_cast<char>(std::tolower(c));
   });
-#endif
   return s;
 }
 
@@ -132,13 +129,9 @@ static inline String buildLocalAdsbAircraftUrl(String baseUrl) {
 
 static inline void applyConfigValue(Settings& cfg, RuntimeConfig& runtime, String key, String val) {
   key = trimCopy(key);
-#if defined(ARDUINO)
-  key.toUpperCase();
-#else
   std::transform(key.begin(), key.end(), key.begin(), [](unsigned char c) {
     return static_cast<char>(std::toupper(c));
   });
-#endif
   val = trimCopy(val);
 
   if      (key == "SSID") runtime.wifiSSID = val;

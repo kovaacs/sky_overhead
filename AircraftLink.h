@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <stdint.h>
 #include <strings.h>
 
@@ -11,13 +13,9 @@ constexpr size_t AIRCRAFT_INFO_URL_MAX = 53;
 static inline String normalizeAircraftLinkId(const String& raw, size_t maxLength) {
   String normalized = trimCopy(raw);
   if (!normalized.length() || normalized.length() > maxLength) return "";
-#if defined(ARDUINO)
-  normalized.toLowerCase();
-#else
   std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char c) {
     return static_cast<char>(std::tolower(c));
   });
-#endif
 
   for (size_t i = 0; i < normalized.length(); i++) {
     char c = normalized[i];
