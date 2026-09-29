@@ -128,14 +128,7 @@ def render_icon(
             [imagemagick, str(png), "-alpha", "remove", "-colorspace", "Gray", "-depth", "8", "gray:-"]
         )
 
-    pixels = []
-    for y in range(size):
-        row = []
-        for x in range(size):
-            shade = raw[y * size + x]
-            row.append(1 if shade < 192 else 0)
-        pixels.append(row)
-    return pixels
+    return [[int(raw[y * size + x] < 192) for x in range(size)] for y in range(size)]
 
 
 def pack_bitmap(pixels: list[list[int]]) -> list[int]:
