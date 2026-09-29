@@ -680,12 +680,10 @@ void setup() {
   sig += String((int)cfg.height);
   sig += "|";
   sig += String((int)cfg.speed);
-  Plane qrPlane;
   RetainedAircraftState qrState = retainedStateFromRtc();
-  qrPlane.reg = got ? p.reg : qrState.lastReg;
   char qrSig[16];
   snprintf(qrSig, sizeof(qrSig), "|QR|%08lx",
-           (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(qrPlane, runtime.qrUrlTemplate)));
+           (unsigned long)aircraftInfoUrlHash(aircraftInfoUrl(got ? p.reg : qrState.lastReg, runtime.qrUrlTemplate)));
   sig += qrSig;
 
   time_t now = currentEpoch();

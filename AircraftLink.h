@@ -44,20 +44,20 @@ static inline bool aircraftLinkHttpUrl(const String& url) {
   return authorityEnd > authorityStart;
 }
 
-static inline String aircraftInfoUrl(const Plane& p, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {
-  String reg = normalizeAircraftLinkId(p.reg, 12);
-  if (!reg.length()) return "";
+static inline String aircraftInfoUrl(const String& reg, String urlTemplate = DEFAULT_AIRCRAFT_INFO_URL) {
+  String id = normalizeAircraftLinkId(reg, 12);
+  if (!id.length()) return "";
 
   urlTemplate = trimCopy(urlTemplate);
 #if defined(ARDUINO)
   if (urlTemplate.indexOf("{reg}") < 0) return "";
-  urlTemplate.replace("{reg}", reg);
+  urlTemplate.replace("{reg}", id);
 #else
   size_t token = urlTemplate.find("{reg}");
   if (token == String::npos) return "";
   while (token != String::npos) {
-    urlTemplate.replace(token, 5, reg);
-    token = urlTemplate.find("{reg}", token + reg.length());
+    urlTemplate.replace(token, 5, id);
+    token = urlTemplate.find("{reg}", token + id.length());
   }
 #endif
   if (!aircraftLinkHttpUrl(urlTemplate) || urlTemplate.length() > AIRCRAFT_INFO_URL_MAX) return "";
