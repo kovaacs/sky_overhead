@@ -35,7 +35,7 @@ Reproducibility inputs are recorded in the repository:
 
 - [`Dockerfile`](Dockerfile): base image, package snapshot, checksum-verified Arduino CLI, fixed build paths, locale, and timestamp epoch.
 - [`sketch.yaml`](sketch.yaml): ESP32 platform, Arduino libraries, and board options.
-- [`tools/setup_arduino_dependencies.sh`](tools/setup_arduino_dependencies.sh): Seeed_GFX tag and verified commit.
+- [`tools/setup_arduino_dependencies.sh`](tools/setup_arduino_dependencies.sh): Seeed_GFX source archive at a pinned commit.
 - [`tools/generate_icon_font.py`](tools/generate_icon_font.py): Lucide source commit.
 
 The fixed epoch stabilizes compiler timestamps and release ZIP metadata; archive entries are sorted and extra ZIP metadata is omitted. Host Arduino configuration, installed libraries, generated fonts, and build outputs are excluded from the Docker context. Dependency downloads still require internet access on uncached builds.
@@ -53,7 +53,7 @@ Use `--no-cache` to rebuild all layers, including dependency installation. When 
 Install these prerequisites before running the native setup, tests, or build:
 
 - Arduino CLI 1.3.0 or newer
-- Git and Python 3.9 or newer
+- curl and Python 3.9 or newer
 - A C++20-capable host compiler available as `c++`
 - `rsvg-convert` and ImageMagick for icon generation
 
@@ -83,7 +83,7 @@ Run the [host tests](#tests), then compile with the default profile in `sketch.y
 tools/build_firmware.sh
 ```
 
-The setup script installs host-test libraries and QRCode, and checks out Seeed_GFX because it is not in the Arduino Library Index. The build profile resolves the remaining pinned dependencies. The build wrapper downloads icons from the pinned Lucide commit and regenerates the ignored `IconFont.h` when needed.
+The setup script installs host-test libraries and QRCode, and downloads Seeed_GFX at the pinned commit because it is not in the Arduino Library Index. The build profile resolves the remaining pinned dependencies. The build wrapper downloads icons from the pinned Lucide commit and regenerates the ignored `IconFont.h` when needed.
 
 The profile's `460800` upload speed avoids connection loss seen with `921600` on this device's USB-serial adapter.
 
