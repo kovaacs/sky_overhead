@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import hashlib
-import json
 import shutil
 import subprocess
 import tempfile
@@ -13,7 +11,6 @@ from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "IconFont.h"
-STATE_FILE = ROOT / ".build" / "icon-font" / "state.json"
 LUCIDE_COMMIT = "59978cecf84986af59f1f9f503bcebdc89c6d166"
 LUCIDE_RAW = f"https://raw.githubusercontent.com/lucide-icons/lucide/{LUCIDE_COMMIT}/icons"
 DEFAULT_STROKE_WIDTH = "2"
@@ -34,20 +31,6 @@ ICONS = [
     ("CLOUDY_LARGE", "cloudy.svg", "K", 144, DEFAULT_STROKE_WIDTH),
     ("DOT", "dot.svg", "L", 32, "4"),
 ]
-
-
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def output_is_current() -> bool:
-    if not OUT.exists() or not STATE_FILE.exists():
-        return False
-    try:
-        state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-    return state == {"generation_key": sha256(Path(__file__)), "output_sha256": sha256(OUT)}
 
 
 def download_sources(icon_dir: Path) -> None:
@@ -77,10 +60,8 @@ def rendering_commands() -> tuple[str, str]:
 
 
 def viewbox_size(root: ElementTree.Element) -> float:
-    viewbox = root.get("viewBox")
-    if not viewbox:
-        width = root.get("width")
-        if not width:
+    if not (viewbox := root.get("viewBox")):
+        if not (width := root.get("width")):
             raise ValueError("SVG is missing viewBox and width")
         return float(width)
     parts = viewbox.replace(",", " ").split()
@@ -135,7 +116,7 @@ def render_icon(
 
 
 def main() -> None:
-    if output_is_current():
+    if OUT.exists() and OUT.stat().st_mtime_ns >= Path(__file__).stat().st_mtime_ns:
         print("IconFont.h is up to date.")
         return
 
@@ -194,15 +175,9 @@ const GFXfont SkyIcon24 PROGMEM = {{
   0x{ord(ICONS[0][2]):02X}, 0x{ord(reserved_char):02X}, 24
 }};
 """
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    temporary_output = STATE_FILE.parent / "IconFont.h.tmp"
+    temporary_output = OUT.with_suffix(".tmp")
     temporary_output.write_text(output, encoding="utf-8")
     temporary_output.replace(OUT)
-
-    STATE_FILE.write_text(
-        json.dumps({"generation_key": sha256(Path(__file__)), "output_sha256": sha256(OUT)}, indent=2) + "\n",
-        encoding="utf-8",
-    )
     print(f"Generated {OUT.name} from Lucide commit {LUCIDE_COMMIT[:12]}.")
 
 
