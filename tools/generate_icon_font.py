@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from math import pow
+from itertools import batched
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -105,7 +105,7 @@ def svg_with_stroke_width(svg_path: Path, size: int, stroke_width: str, out_path
         output_stroke = (
             float(stroke_width)
             * STROKE_SCALE_BREAKPOINT
-            * pow(scale / STROKE_SCALE_BREAKPOINT, STROKE_SCALE_EXPONENT)
+            * (scale / STROKE_SCALE_BREAKPOINT) ** STROKE_SCALE_EXPONENT
         )
     stroke_units = output_stroke / scale
     root.set("stroke-width", f"{stroke_units:g}")
@@ -159,8 +159,8 @@ def main() -> None:
     glyphs.append((offset, 0, 0, 0, 0, 0, reserved_char, "reserved"))
 
     bitmap_lines = []
-    for i in range(0, len(bitmaps), 12):
-        bitmap_lines.append("  " + ", ".join(f"0x{b:02X}" for b in bitmaps[i : i + 12]) + ",")
+    for batch in batched(bitmaps, 12):
+        bitmap_lines.append("  " + ", ".join(f"0x{b:02X}" for b in batch) + ",")
 
     const_lines = [f"  constexpr char {name} = '{char}';" for name, _, char, _, _ in ICONS]
     const_lines.extend(f"  constexpr uint8_t {name}_SIZE = {size};" for name, _, _, size, _ in ICONS)
