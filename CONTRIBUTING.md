@@ -53,7 +53,7 @@ Use `--no-cache` to rebuild all layers, including dependency installation. When 
 Install these prerequisites before running the native setup, tests, or build:
 
 - Arduino CLI 1.3.0 or newer
-- curl and Python 3.9 or newer
+- curl and Python 3.13 or newer (matching the Docker build)
 - A C++20-capable host compiler available as `c++`
 - `rsvg-convert` and ImageMagick for icon generation
 

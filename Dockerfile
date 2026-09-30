@@ -1,5 +1,5 @@
 # Pin the base image and Debian package snapshot together when updating tools.
-FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 AS toolchain
+FROM python:3.13-slim-bookworm@sha256:2325bb286ec344af3e5898cc224b5844e2707ac6e26b1632516fd3edc84a5e26 AS toolchain
 
 ARG TARGETARCH
 RUN test "$TARGETARCH" = arm64
@@ -11,7 +11,7 @@ RUN rm /etc/apt/sources.list.d/debian.sources \
       > /etc/apt/sources.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-      ca-certificates curl git g++ python3 librsvg2-bin imagemagick \
+      ca-certificates curl git g++ librsvg2-bin imagemagick \
       zip libdigest-sha-perl xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
