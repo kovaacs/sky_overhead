@@ -22,19 +22,14 @@ if [ -z "${ARDUINO_JSON_INC:-}" ]; then
   exit 1
 fi
 
-run_test() {
-  src="$1"
+mkdir -p .build/tests
+
+for src in tools/test_*.cpp; do
   name="$(basename "$src" .cpp)"
   out=".build/tests/$name"
 
   c++ -std=c++20 -Wall -Wextra -Werror -I. -I"$ARDUINO_JSON_INC" "$src" -o "$out"
   "$out"
-}
-
-mkdir -p .build/tests
-
-for src in tools/test_*.cpp; do
-  run_test "$src"
 done
 
 python3 tools/test_package_release.py
