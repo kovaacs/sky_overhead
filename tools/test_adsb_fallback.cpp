@@ -25,73 +25,34 @@ struct FakeFetcher {
 };
 
 int main() {
-  {
-    FakeFetcher publicAdsb { FETCH_FOUND, planeWithHex("PUBLIC_PRIMARY") };
-    FakeFetcher local { FETCH_FOUND, planeWithHex("LOCAL_FALLBACK") };
-    Plane out;
-    String source;
+  const struct {
+    const char* name;
+    FetchResult publicResult, localResult, expectedResult;
+    int localCalls;
+    const char* hex;
+    const char* source;
+  } cases[] = {
+    { "public found", FETCH_FOUND, FETCH_FOUND, FETCH_FOUND, 0, "PUBLIC_PRIMARY", "adsb.lol" },
+    { "public empty", FETCH_EMPTY, FETCH_FOUND, FETCH_EMPTY, 0, "", "adsb.lol" },
+    { "local found", FETCH_ERROR, FETCH_FOUND, FETCH_FOUND, 1, "LOCAL_FALLBACK", "local feed" },
+    { "local empty", FETCH_ERROR, FETCH_EMPTY, FETCH_EMPTY, 1, "", "local feed" },
+    { "both error", FETCH_ERROR, FETCH_ERROR, FETCH_ERROR, 1, "", "" }
+  };
 
-    FetchResult result = fetchPublicThenLocalSource(out, publicAdsb, local, source);
-    expectEqual("public primary result", result, FETCH_FOUND);
-    expectEqual("public primary called once", publicAdsb.calls, 1);
-    expectEqual("local fallback not called after public found", local.calls, 0);
-    expectTrue("public primary aircraft kept", out.hex == "PUBLIC_PRIMARY");
-    expectTrue("public primary source kept", source == "adsb.lol");
-  }
-
-  {
-    FakeFetcher publicAdsb { FETCH_EMPTY, Plane() };
-    FakeFetcher local { FETCH_FOUND, planeWithHex("LOCAL_FALLBACK") };
-    Plane out;
-    String source;
-
-    FetchResult result = fetchPublicThenLocalSource(out, publicAdsb, local, source);
-    expectEqual("public empty result", result, FETCH_EMPTY);
-    expectEqual("public empty primary called once", publicAdsb.calls, 1);
-    expectEqual("local fallback not called after public empty", local.calls, 0);
-    expectTrue("public empty output kept", !out.found);
-    expectTrue("public empty source kept", source == "adsb.lol");
-  }
-
-  {
-    FakeFetcher publicAdsb { FETCH_ERROR, Plane() };
-    FakeFetcher local { FETCH_FOUND, planeWithHex("LOCAL_FALLBACK") };
-    Plane out;
-    String source;
-
-    FetchResult result = fetchPublicThenLocalSource(out, publicAdsb, local, source);
-    expectEqual("local fallback result after public error", result, FETCH_FOUND);
-    expectEqual("public error primary called once", publicAdsb.calls, 1);
-    expectEqual("local fallback called after public error", local.calls, 1);
-    expectTrue("local fallback aircraft used after public error", out.hex == "LOCAL_FALLBACK");
-    expectTrue("local fallback source used after public error", source == "local feed");
-  }
-
-  {
-    FakeFetcher publicAdsb { FETCH_ERROR, Plane() };
-    FakeFetcher local { FETCH_EMPTY, Plane() };
+  for (const auto& test : cases) {
+    FakeFetcher publicAdsb { test.publicResult, test.publicResult == FETCH_FOUND ? planeWithHex("PUBLIC_PRIMARY") : Plane() };
+    FakeFetcher local { test.localResult, test.localResult == FETCH_FOUND ? planeWithHex("LOCAL_FALLBACK") : Plane() };
     Plane out = planeWithHex("OLD");
     String source;
+    String name = test.name;
 
     FetchResult result = fetchPublicThenLocalSource(out, publicAdsb, local, source);
-    expectEqual("local empty result after public error", result, FETCH_EMPTY);
-    expectEqual("public error called before local empty", publicAdsb.calls, 1);
-    expectEqual("local empty called after public error", local.calls, 1);
-    expectTrue("local empty output kept after public error", !out.found);
-    expectTrue("local empty source used after public error", source == "local feed");
-  }
-
-  {
-    FakeFetcher publicAdsb { FETCH_ERROR, Plane() };
-    FakeFetcher local { FETCH_ERROR, Plane() };
-    Plane out = planeWithHex("OLD");
-    String source;
-
-    FetchResult result = fetchPublicThenLocalSource(out, publicAdsb, local, source);
-    expectEqual("both sources error result", result, FETCH_ERROR);
-    expectEqual("public error called before local error", publicAdsb.calls, 1);
-    expectEqual("local error called after public error", local.calls, 1);
-    expectTrue("both sources error has no source", source == "");
+    expectEqual((name + " result").c_str(), result, test.expectedResult);
+    expectEqual((name + " public calls").c_str(), publicAdsb.calls, 1);
+    expectEqual((name + " local calls").c_str(), local.calls, test.localCalls);
+    expectTrue((name + " found").c_str(), out.found == (test.expectedResult == FETCH_FOUND));
+    expectEqual((name + " aircraft").c_str(), out.hex, test.hex);
+    expectEqual((name + " source").c_str(), source, test.source);
   }
 
   expectTrue("source aircraft only", dataSourceText("local feed", false) == "local feed");
