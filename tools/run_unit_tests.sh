@@ -36,3 +36,5 @@ mkdir -p .build/tests
 for src in tools/test_*.cpp; do
   run_test "$src"
 done
+
+python3 tools/test_package_release.py

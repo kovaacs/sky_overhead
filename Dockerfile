@@ -12,7 +12,7 @@ RUN rm /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
       ca-certificates curl git g++ librsvg2-bin imagemagick \
-      zip libdigest-sha-perl xz-utils \
+      xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL --retry 3 \
@@ -58,8 +58,8 @@ RUN sh tools/build_firmware.sh --clean --jobs 2 \
 FROM firmware-build AS release-build
 COPY README.md FLASHING.md THIRD_PARTY_NOTICES.md LICENSE ./
 ARG RELEASE_VERSION=v0.0.0
-RUN sh tools/package_release.sh "$RELEASE_VERSION" /out/firmware /out/release \
-    && cd /out/release && shasum -a 256 -c SHA256SUMS
+RUN python3 tools/package_release.py "$RELEASE_VERSION" /out/firmware /out/release \
+    && cd /out/release && sha256sum -c SHA256SUMS
 
 FROM scratch AS firmware
 COPY --from=firmware-build /out/firmware/ /
