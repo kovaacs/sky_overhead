@@ -61,10 +61,6 @@ RuntimeConfig runtime;
 static const char* API_HOST   = "api.adsb.lol";   // or "api.airplanes.live"
 static const char* USER_AGENT = "reTerminal-E1001-SkyOverhead/3.0";
 
-// Toggle whole subsystems here if one ever misbehaves on your hardware.
-#define ENABLE_BATTERY      1
-#define DEBUG_LOG           1
-
 namespace pin {
   constexpr int BAT_ADC    = 1;    // battery voltage sense
   constexpr int BAT_EN     = 21;   // battery-sense enable (drive HIGH to read)
@@ -159,11 +155,7 @@ EPaper            epaper;
 Settings          cfg;
 SensirionI2cSht4x sht4x;
 
-#if DEBUG_LOG
-  #define LOG(...) Serial1.printf(__VA_ARGS__)
-#else
-  #define LOG(...) ((void)0)
-#endif
+#define LOG(...) Serial1.printf(__VA_ARGS__)
 
 static void goSleep(uint32_t seconds);
 
@@ -210,9 +202,8 @@ static time_t currentEpoch() {
 }
 
 // ============================ BATTERY ===============================
-// Returns 0-100, or -1 if disabled. Maps 3.30 V -> 0 %, 4.20 V -> 100 %.
+// Returns 0-100. Maps 3.30 V -> 0 %, 4.20 V -> 100 %.
 static int batteryPct() {
-#if ENABLE_BATTERY
   pinMode(pin::BAT_EN, OUTPUT);
   digitalWrite(pin::BAT_EN, HIGH);
   delay(8);
@@ -226,9 +217,6 @@ static int batteryPct() {
   int pct = (int)lround((volts - 3.30) / (4.20 - 3.30) * 100.0);
   LOG("[batt] %.2f V -> %d%%\n", volts, pct);
   return constrain(pct, 0, 100);
-#else
-  return -1;
-#endif
 }
 
 // Read the onboard SHT4x. After a deep-sleep wake the sensor needs a moment,

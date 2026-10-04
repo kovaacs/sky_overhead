@@ -6,28 +6,6 @@
 
 #include "TestHelpers.h"
 
-static Plane samplePlane() {
-  Plane p;
-  p.found = true;
-  p.hex = "3C65C2";
-  p.callsign = "DLH4JA";
-  p.category = "A3";
-  p.airline = "Lufthansa";
-  p.fromCode = "MUC";
-  p.toCode = "BUD";
-  p.routeOk = true;
-  p.typeCode = "A20N";
-  p.typeDesc = "Airbus A320neo";
-  p.reg = "D-AINZ";
-  p.altFt = 33000;
-  p.slantKm = 8.2;
-  p.gsKt = 421;
-  p.vrateFpm = 850;
-  p.hasGs = true;
-  p.hasVrate = true;
-  return p;
-}
-
 int main() {
   expectTrue("periodic refresh disabled", !periodicRefreshDue(0, 1000, 100));
   expectTrue("periodic refresh due without retained time", periodicRefreshDue(300, 1000, 0));

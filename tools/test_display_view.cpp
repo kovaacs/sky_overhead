@@ -6,26 +6,6 @@
 
 #include "TestHelpers.h"
 
-static Plane samplePlane() {
-  Plane p;
-  p.found = true;
-  p.callsign = "DLH4JA";
-  p.hex = "3C65C2";
-  p.category = "A3";
-  p.airline = "Lufthansa";
-  p.fromCode = "MUC";
-  p.toCode = "BUD";
-  p.typeCode = "A20N";
-  p.typeDesc = "Airbus A320neo";
-  p.reg = "D-AINZ";
-  p.altFt = 33000;
-  p.gsKt = 421;
-  p.vrateFpm = 850;
-  p.hasGs = true;
-  p.hasVrate = true;
-  return p;
-}
-
 int main() {
   expectEqual("footer refresh text", frameFooterRefreshedText("14:32"), "Last refreshed: 14:32");
   expectEqual("footer source text", frameFooterSourceText("adsb.lol & adsb.im"), "Source: adsb.lol & adsb.im");
