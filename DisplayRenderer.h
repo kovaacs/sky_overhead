@@ -14,8 +14,8 @@
 static inline String fit(const String& s, int maxW) {
   if (epaper.textWidth(s) <= maxW) return s;
   String t = s;
-  while (t.length() && epaper.textWidth(t + "…") > maxW) t.remove(t.length() - 1);
-  return t + "…";
+  while (t.length() && epaper.textWidth(t + "...") > maxW) t.remove(t.length() - 1);
+  return t + "...";
 }
 
 static inline void drawIcon(char glyph, int x, int y, uint8_t nativeSize) {
