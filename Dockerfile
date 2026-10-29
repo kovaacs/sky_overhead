@@ -1,13 +1,13 @@
 # Pin the base image and Debian package snapshot together when updating tools.
-FROM python:3.13-slim-bookworm@sha256:2325bb286ec344af3e5898cc224b5844e2707ac6e26b1632516fd3edc84a5e26 AS toolchain
+FROM python:3.15-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd AS toolchain
 
 ARG TARGETARCH
 RUN test "$TARGETARCH" = arm64
 
 RUN rm /etc/apt/sources.list.d/debian.sources \
     && printf '%s\n' \
-      'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20260825T000000Z bookworm main' \
-      'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260825T000000Z bookworm-security main' \
+      'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20261029T000000Z bookworm main' \
+      'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20261029T000000Z bookworm-security main' \
       > /etc/apt/sources.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
