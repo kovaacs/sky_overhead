@@ -13,9 +13,9 @@
  *   adsb.im    — route lookup using callsign + live position
  *
  * Build settings:
- *   Display : Seeed_GFX   (driver.h must contain: #define BOARD_SCREEN_COMBO 520)
+ *   Display : Seeed_GFX2  (product profile: Seeed_Product::reTerminal_E1001)
  *   Board   : XIAO_ESP32S3    PSRAM: OPI PSRAM (ON)
- *   Libs    : Seeed_GFX (a TFT_eSPI fork), ArduinoJson v7, QRCode
+ *   Libs    : Seeed_GFX2, ArduinoJson v7, QRCode
  *
  * Hardware notes (verified for the E1001, but worth checking on your unit):
  *   Battery : read on GPIO1 after pulling GPIO21 high; ~2x voltage divider.
@@ -27,7 +27,7 @@
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <SensirionI2cSht4x.h>
-#include <TFT_eSPI.h>
+#include <Seeed_GFX.h>
 #include <math.h>
 #include "esp_sleep.h"
 #include "time.h"
@@ -151,7 +151,7 @@ RTC_DATA_ATTR time_t   rtcLastRefreshEpoch = 0; // last physical display update
 RTC_DATA_ATTR uint16_t rtcRedraws      = 0;    // for periodic ghost-clean
 RTC_DATA_ATTR uint8_t  rtcDemoStep     = 0;    // rotates demo screens
 
-EPaper            epaper;
+Seeed_GFX         epaper(Seeed_Product::reTerminal_E1001);
 Settings          cfg;
 SensirionI2cSht4x sht4x;
 
@@ -460,7 +460,7 @@ static void appendScreenLog(JsonDocument& entry) {
   pinMode(pin::SD_EN, OUTPUT);
   digitalWrite(pin::SD_EN, HIGH);
   delay(50);
-  // Seeed_GFX owns HSPI after epaper.begin(); use the other controller so
+  // Seeed_GFX2 owns HSPI after epaper.begin(); use the other controller so
   // remounting the card cannot reset the display's active SPI bus.
   SPIClass spiSD(FSPI);
   spiSD.begin(pin::SD_SCK, pin::SD_MISO, pin::SD_MOSI, pin::SD_CS);
@@ -543,6 +543,13 @@ static void logNightScreen(uint16_t wakeMinute, int batt, const String& refreshe
   appendScreenLog(entry);
 }
 
+// Commit render state only after a successful refresh, so a failed one is retried.
+static bool refreshDisplay() {
+  GfxResult result = epaper.refresh();
+  if (!result.ok()) LOG("[display] refresh failed: %s\n", result.message);
+  return result.ok();
+}
+
 static void runDemoMode() {
   int batt = batteryPct();
   Climate clim = readClimate();
@@ -557,16 +564,17 @@ static void runDemoMode() {
     drawNightSleep(cfg.nightEnd, batt, refreshedText);
   }
 
-  epaper.update();
-  rtcRedraws++;
-  if (step == 0) {
-    logLiveScreen(p, batt, clim, retained, refreshedText, "");
-  } else {
-    logNightScreen(cfg.nightEnd, batt, refreshedText);
+  if (refreshDisplay()) {
+    rtcRedraws++;
+    if (step == 0) {
+      logLiveScreen(p, batt, clim, retained, refreshedText, "");
+    } else {
+      logNightScreen(cfg.nightEnd, batt, refreshedText);
+    }
+    rtcDemoStep = (step + 1) % 2;
+    snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
+    LOG("[demo] drew step %u\n", step);
   }
-  rtcDemoStep = (step + 1) % 2;
-  snprintf(rtcSig, sizeof(rtcSig), "D|%u", step);
-  LOG("[demo] drew step %u\n", step);
   uint32_t demoSleep = constrain(cfg.busy, 15, 30);
   goSleep(demoSleep);
 }
@@ -593,7 +601,8 @@ void setup() {
   // The RTC keeps UTC across deep sleep, but process timezone state does not.
   // Apply it before Wi-Fi so failed connections still use the correct local time.
   applyTimezone(runtime.tzInfo.c_str());
-  epaper.begin();
+  if (!epaper.begin()) LOG("[display] init failed: %s\n", epaper.lastResult().message);
+  digitalWrite(pin::SD_EN, LOW);  // Seeed_GFX2 powers the SD slot in begin(); keep it off
   Wire.begin(pin::I2C_SDA, pin::I2C_SCL);
   sht4x.begin(Wire, 0x44);
 
@@ -614,7 +623,7 @@ void setup() {
     if (strcmp(sig, rtcSig) != 0 || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
       String refreshedText = hhmm();
       drawNightSleep(cfg.nightEnd, batt, refreshedText);
-      epaper.update();
+      if (!refreshDisplay()) goSleep(timing::RETRY_SECONDS);
       rtcRedraws++;
       rtcLastRefreshEpoch = now;
       strncpy(rtcSig, sig, sizeof(rtcSig));
@@ -678,18 +687,19 @@ void setup() {
   if (sig != String(rtcSig) || periodicRefreshDue(cfg.maxRefresh, now, rtcLastRefreshEpoch)) {
     if (rtcRedraws > 0 && rtcRedraws % timing::GHOST_CLEAN_EVERY == 0) {
       epaper.fillScreen(TFT_WHITE);
-      epaper.update();                             // clear accumulated ghosting
+      refreshDisplay();                            // clear accumulated ghosting
     }
     RetainedAircraftState retained = retainedStateFromRtc();
     String refreshedText = hhmm();
     drawLive(p, batt, clim, cfg.temp, cfg.height, cfg.speed, retained, refreshedText,
              runtime.qrUrlTemplate, sourceText);
-    epaper.update();
-    rtcRedraws++;
-    rtcLastRefreshEpoch = now;
-    sig.toCharArray(rtcSig, sizeof(rtcSig));
-    logLiveScreen(p, batt, clim, retained, refreshedText, sourceText);
-    LOG("[draw] repainted (%s)\n", sig.c_str());
+    if (refreshDisplay()) {
+      rtcRedraws++;
+      rtcLastRefreshEpoch = now;
+      sig.toCharArray(rtcSig, sizeof(rtcSig));
+      logLiveScreen(p, batt, clim, retained, refreshedText, sourceText);
+      LOG("[draw] repainted (%s)\n", sig.c_str());
+    }
   } else {
     LOG("[draw] unchanged, skipped\n");
   }

@@ -35,7 +35,7 @@ Reproducibility inputs are recorded in the repository:
 
 - [`Dockerfile`](Dockerfile): base image, package snapshot, checksum-verified Arduino CLI, fixed build paths, locale, and timestamp epoch.
 - [`sketch.yaml`](sketch.yaml): ESP32 platform, Arduino libraries, and board options.
-- [`tools/setup_arduino_dependencies.sh`](tools/setup_arduino_dependencies.sh): Seeed_GFX source archive at a pinned commit.
+- [`tools/setup_arduino_dependencies.sh`](tools/setup_arduino_dependencies.sh): Seeed_GFX2 source archive at a pinned commit.
 - [`tools/generate_icon_font.py`](tools/generate_icon_font.py): Lucide source commit.
 
 The fixed epoch stabilizes compiler timestamps and release ZIP metadata; archive entries are sorted and extra ZIP metadata is omitted. Host Arduino configuration, installed libraries, generated fonts, and build outputs are excluded from the Docker context. Dependency downloads still require internet access on uncached builds.
@@ -83,11 +83,11 @@ Run the [host tests](#tests), then compile with the default profile in `sketch.y
 tools/build_firmware.sh
 ```
 
-The setup script installs host-test libraries and QRCode, and downloads Seeed_GFX at the pinned commit because it is not in the Arduino Library Index. The build profile resolves the remaining pinned dependencies. The build wrapper downloads icons from the pinned Lucide commit and regenerates the ignored `IconFont.h` when needed.
+The setup script installs host-test libraries and QRCode, and downloads Seeed_GFX2 at the pinned commit because it is not in the Arduino Library Index. The build profile resolves the remaining pinned dependencies. The build wrapper downloads icons from the pinned Lucide commit and regenerates the ignored `IconFont.h` when needed.
 
 The profile's `460800` upload speed avoids connection loss seen with `921600` on this device's USB-serial adapter.
 
-If `TFT_eSPI.h`, `EPaper`, or `EPAPER_ENABLE` is missing during compilation, verify the Seeed_GFX checkout and `driver.h`. This project uses Seeed's e-paper stack, not the stock Bodmer TFT_eSPI library.
+If `Seeed_GFX.h` or a `font/GFXFF/` header is missing during compilation, rerun the setup script and verify `.arduino-sketchbook/libraries/Seeed_GFX2`. This project uses Seeed_GFX2, not the older Seeed_GFX or the stock Bodmer TFT_eSPI library.
 
 ## Tests
 
@@ -152,9 +152,9 @@ These optional `/config.txt` settings are intended for development rather than n
 
 ## Hardware Notes
 
-- Keep `SPIClass spiSD(FSPI)` local to SD-card functions. Seeed_GFX owns `HSPI` for the display, and another controller object for that host can disrupt logging. Constructing `SPIClass` at file scope can also run before FreeRTOS is ready.
+- Keep `SPIClass spiSD(FSPI)` local to SD-card functions. Seeed_GFX2 owns `HSPI` for the display, and another controller object for that host can disrupt logging. Constructing `SPIClass` at file scope can also run before FreeRTOS is ready.
 - Use full e-paper updates. The UC8179 driver's partial refresh produces heavy ghosting with the built-in waveform table.
-- The included `driver.h` selects the E1001 display with `BOARD_SCREEN_COMBO 520`.
+- The sketch selects the E1001 display with `Seeed_Product::reTerminal_E1001`; Seeed_GFX2 supplies its pins and panel settings.
 
 Seeed's reTerminal E Series Arduino guides provide additional display and peripheral details:
 

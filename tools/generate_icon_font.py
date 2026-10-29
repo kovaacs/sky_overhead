@@ -153,7 +153,7 @@ def main() -> None:
     output = f"""#pragma once
 
 #include <Arduino.h>
-#include <TFT_eSPI.h>
+#include <Seeed_GFX.h>
 
 namespace icon {{
 {chr(10).join(const_lines)}
