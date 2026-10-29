@@ -21,7 +21,8 @@ static inline String fit(const String& s, int maxW) {
 static inline void drawIcon(char glyph, int x, int y, uint8_t nativeSize) {
   epaper.setFreeFont(&SkyIcon24);
   uint8_t baseline = nativeSize > 127 ? 127 : nativeSize;
-  epaper.drawChar(x, y + baseline, glyph, TFT_BLACK, TFT_WHITE, 1);
+  // Same fg/bg draws transparently; Seeed_GFX2 otherwise blanks the glyph box over neighbours.
+  epaper.drawChar(x, y + baseline, glyph, TFT_BLACK, TFT_BLACK, 1);
 }
 
 static inline void drawIconCentered(char glyph, int cx, int cy, uint8_t nativeSize) {
@@ -280,7 +281,7 @@ static inline void drawLeftColumn(LeftColumnView v) {
 
 static inline void drawNightSleep(uint16_t wakeMinute, int batt, const String& refreshedText) {
   epaper.fillScreen(TFT_WHITE);
-  epaper.setTextColor(TFT_BLACK, TFT_WHITE);
+  epaper.setTextColor(TFT_BLACK);  // transparent text; the screen is already cleared
 
   epaper.setTextDatum(TL_DATUM);
   drawFrameHeader(batt);
@@ -313,7 +314,7 @@ static inline void drawLive(
 ) {
   epaper.fillScreen(TFT_WHITE);
   epaper.setTextDatum(TL_DATUM);
-  epaper.setTextColor(TFT_BLACK, TFT_WHITE);
+  epaper.setTextColor(TFT_BLACK);  // transparent text; the screen is already cleared
 
   String aircraftUrl = aircraftInfoUrl(p.found ? p.reg : retained.lastReg, qrUrlTemplate);
   drawFrameHeader(batt, aircraftUrl);
