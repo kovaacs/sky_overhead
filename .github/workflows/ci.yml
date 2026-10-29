@@ -27,7 +27,7 @@ jobs:
         run: docker buildx bake
 
       - name: Upload firmware
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: sky-overhead-${{ github.sha }}
           path: .build/firmware/
