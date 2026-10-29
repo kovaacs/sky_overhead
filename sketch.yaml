@@ -10,6 +10,6 @@ profiles:
       - QRCode (0.0.1)
       - Sensirion I2C SHT4x (1.1.2)
       - dependency: Sensirion Core (0.7.3)
-      - dir: .arduino-sketchbook/libraries/Seeed_GFX
+      - dir: .arduino-sketchbook/libraries/Seeed_GFX2
 
 default_profile: reterminal_e1001

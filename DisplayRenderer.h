@@ -1,5 +1,11 @@
 #pragma once
 
+#include <Seeed_GFX.h>
+#include <font/GFXFF/FreeSans12pt7b.h>
+#include <font/GFXFF/FreeSans18pt7b.h>
+#include <font/GFXFF/FreeSansBold9pt7b.h>
+#include <font/GFXFF/FreeSansBold12pt7b.h>
+#include <font/GFXFF/FreeSansBold24pt7b.h>
 #include <qrcode.h>
 
 #include "AircraftLink.h"
